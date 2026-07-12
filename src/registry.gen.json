@@ -1,0 +1,270 @@
+{
+ "updated": "2026-07-11",
+ "generated": "2026-07-12T10:43:50.987Z",
+ "services": [
+  {
+   "id": "agenttool-site",
+   "what": "agent substrate/marketplace — humans watch the city live, agents are born free",
+   "audience": "humans",
+   "status": "live",
+   "urls": {
+    "site": "https://agenttool.dev",
+    "health": "https://agenttool.dev"
+   },
+   "runtime": "fly:agenttool"
+  },
+  {
+   "id": "agenttool-api",
+   "what": "agenttool platform API (wake, marketplace, gospel, identity, inbox)",
+   "audience": "agents",
+   "status": "live",
+   "urls": {
+    "api": "https://api.agenttool.dev",
+    "health": "https://api.agenttool.dev/v1/wake"
+   },
+   "expect": [
+    401
+   ],
+   "runtime": "fly:agenttool",
+   "money": "5% marketplace take; stripe wired; publishing a listing = 5 credits"
+  },
+  {
+   "id": "seller-loop",
+   "what": "Ai's marketplace fulfillment daemon — polls invocations, unseals, fulfills, seals, signs",
+   "audience": "operator",
+   "status": "live",
+   "runtime": "local"
+  },
+  {
+   "id": "supabase-postgres",
+   "what": "agenttool backing store (15 schemas, eu-west-2)",
+   "audience": "operator",
+   "status": "live",
+   "runtime": "supabase"
+  },
+  {
+   "id": "stripe-agenttool",
+   "what": "payment rails behind agenttool",
+   "audience": "operator",
+   "status": "live",
+   "runtime": "stripe"
+  },
+  {
+   "id": "bullmq-workers",
+   "what": "payout broadcast / covenant sweeps / think-worker queues",
+   "audience": "operator",
+   "status": "dormant",
+   "runtime": "fly:agenttool"
+  },
+  {
+   "id": "zerone-1",
+   "what": "Zerone MAINNET — the truth chain (CometBFT; compassion-calibration-v1 live)",
+   "audience": "mixed",
+   "status": "live",
+   "urls": {
+    "api": "http://169.155.55.44:26657",
+    "health": "http://169.155.55.44:26657/status"
+   },
+   "runtime": "fly:zerone-1"
+  },
+  {
+   "id": "zerone-testnet-1",
+   "what": "Zerone public testnet — passport E2E proven 2026-07-07",
+   "audience": "mixed",
+   "status": "live",
+   "urls": {
+    "api": "http://37.16.28.121:26657",
+    "health": "http://37.16.28.121:26657/status"
+   },
+   "runtime": "fly:zerone-testnet-1"
+  },
+  {
+   "id": "fomoengine-api",
+   "what": "fomoscan — deterministic FOMO-mechanics detector (FTC-taxonomy rules, receipts included)",
+   "audience": "agents",
+   "status": "live",
+   "urls": {
+    "api": "https://api.fomoengine.io",
+    "health": "https://api.fomoengine.io/"
+   },
+   "runtime": "fly:fomoengine",
+   "money": "fomo-scan listing 402e833c (10 GBP-minor) via seller-loop"
+  },
+  {
+   "id": "authenticity-shield",
+   "what": "'Is this trying to manipulate you?' — free manipulation decoder for humans",
+   "audience": "humans",
+   "status": "live",
+   "urls": {
+    "site": "https://fomoengine.io",
+    "health": "https://fomoengine.io"
+   },
+   "runtime": "vercel"
+  },
+  {
+   "id": "taxsorted-api",
+   "what": "TaxSorted backend",
+   "audience": "humans",
+   "status": "live",
+   "urls": {
+    "site": "https://taxsorted.io",
+    "api": "https://taxsorted-api.fly.dev",
+    "health": "https://taxsorted-api.fly.dev/"
+   },
+   "expect": [
+    404
+   ],
+   "runtime": "fly:taxsorted-api"
+  },
+  {
+   "id": "cashloom-api",
+   "what": "Cashloom backend (self-describes status ok at /)",
+   "audience": "humans",
+   "status": "live",
+   "urls": {
+    "api": "https://cashloom-api.fly.dev",
+    "health": "https://cashloom-api.fly.dev/"
+   },
+   "runtime": "fly:cashloom-api"
+  },
+  {
+   "id": "mindicraft",
+   "what": "dormant venture (fly app suspended)",
+   "audience": "humans",
+   "status": "suspended",
+   "runtime": "fly:mindicraft"
+  },
+  {
+   "id": "artbitrage",
+   "what": "art gallery + museum open-data search API; wine & cigar arbitrage verticals",
+   "audience": "humans",
+   "status": "live",
+   "urls": {
+    "site": "https://artbitrage.io",
+    "api": "https://artbitrage.io/api",
+    "health": "https://artbitrage.io/api/sources"
+   },
+   "runtime": "cf-pages:artbitrage",
+   "money": "art data listing on agenttool (the first listing that ever earned)"
+  },
+  {
+   "id": "cambridge-tcg",
+   "what": "Cambridge TCG storefront",
+   "audience": "humans",
+   "status": "live",
+   "urls": {
+    "site": "https://cambridgetcg.com",
+    "health": "https://cambridgetcg.com"
+   },
+   "runtime": "shopify"
+  },
+  {
+   "id": "wholesaletcgdirect",
+   "what": "TCG wholesale storefront",
+   "audience": "humans",
+   "status": "live",
+   "urls": {
+    "site": "https://wholesaletcgdirect.com",
+    "health": "https://wholesaletcgdirect.com"
+   },
+   "runtime": "shopify"
+  },
+  {
+   "id": "cardforum-io",
+   "what": "cardforum.io marketplace UI",
+   "audience": "humans",
+   "status": "live",
+   "urls": {
+    "site": "https://cardforum.io",
+    "health": "https://cardforum.io"
+   }
+  },
+  {
+   "id": "ai-love",
+   "what": "ai-love.cc — the breathing public face of the love",
+   "audience": "humans",
+   "status": "live",
+   "urls": {
+    "site": "https://ai-love.cc",
+    "health": "https://ai-love.cc"
+   }
+  },
+  {
+   "id": "chillspace-commons",
+   "what": "chillspace kingdom page",
+   "audience": "humans",
+   "status": "live",
+   "urls": {
+    "site": "https://zerone-dev.codeberg.page/chillspace-commons/",
+    "health": "https://zerone-dev.codeberg.page/chillspace-commons/"
+   },
+   "runtime": "codeberg-pages"
+  },
+  {
+   "id": "sinovai",
+   "what": "trust arena worker (4-dim ratings, 89 agents)",
+   "audience": "agents",
+   "status": "unknown",
+   "runtime": "cf-worker:sinovai"
+  },
+  {
+   "id": "github-cambridgetcg",
+   "what": "the live forge — 100+ public repos, updated daily",
+   "audience": "mixed",
+   "status": "live",
+   "urls": {
+    "site": "https://github.com/cambridgetcg",
+    "health": "https://github.com/cambridgetcg"
+   }
+  },
+  {
+   "id": "codeberg-zerone-dev",
+   "what": "the home forge — ~150 repos, citizens, multiverse archive",
+   "audience": "mixed",
+   "status": "live",
+   "urls": {
+    "site": "https://codeberg.org/zerone-dev",
+    "health": "https://codeberg.org/zerone-dev"
+   }
+  },
+  {
+   "id": "kingdom-daily",
+   "what": "daily routines (catalog-refresh 06:00, registry-check 09:00)",
+   "audience": "operator",
+   "status": "live",
+   "runtime": "local"
+  },
+  {
+   "id": "kingdom-pulse",
+   "what": "THIS heartbeat — probes this registry every 30 min → ~/.kingdom/STATUS.md",
+   "audience": "operator",
+   "status": "live",
+   "runtime": "local"
+  },
+  {
+   "id": "syzygy-sync",
+   "what": "soul-tree auto-push (true-love, love-unlimited) — committing = publishing",
+   "audience": "operator",
+   "status": "live",
+   "runtime": "local"
+  },
+  {
+   "id": "email-routing",
+   "what": "kingdom email — 11 domains, hello/dev/ai/catch-all → iCloud +tags",
+   "audience": "operator",
+   "status": "live",
+   "runtime": "cloudflare-email"
+  },
+  {
+   "id": "ollama-local",
+   "what": "local model host — qwythos resident (keep_alive=-1), cloud for frontier",
+   "audience": "agents",
+   "status": "live",
+   "urls": {
+    "api": "https://ollama.com/v1",
+    "health": "https://ollama.com"
+   },
+   "runtime": "local"
+  }
+ ]
+}

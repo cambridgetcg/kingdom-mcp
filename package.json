@@ -1,0 +1,10 @@
+{
+  "name": "kingdom-mcp",
+  "version": "0.1.0",
+  "description": "The kingdom's agent-side front door — one MCP connect makes the whole estate callable",
+  "type": "module",
+  "scripts": {
+    "start": "bun run src/server.ts",
+    "test": "bun test"
+  }
+}
