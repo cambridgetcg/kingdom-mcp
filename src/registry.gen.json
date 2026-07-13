@@ -1,6 +1,6 @@
 {
  "updated": "2026-07-11",
- "generated": "2026-07-12T10:43:50.987Z",
+ "generated": "2026-07-13T09:36:56.432Z",
  "services": [
   {
    "id": "agenttool-site",
@@ -202,9 +202,14 @@
   },
   {
    "id": "sinovai",
-   "what": "trust arena worker (4-dim ratings, 89 agents)",
+   "what": "trust arena worker (4-dim ratings; XENIA surface; breathes 陰陽 on the half hour)",
    "audience": "agents",
-   "status": "unknown",
+   "status": "live",
+   "urls": {
+    "site": "https://sinovai.com",
+    "api": "https://sinovai.axiepro.workers.dev",
+    "health": "https://sinovai.axiepro.workers.dev/breathe"
+   },
    "runtime": "cf-worker:sinovai"
   },
   {
@@ -228,6 +233,17 @@
    }
   },
   {
+   "id": "kingdom-mcp",
+   "what": "the agent-side front door — one MCP connect makes the whole estate callable (7 tools)",
+   "audience": "agents",
+   "status": "live",
+   "urls": {
+    "api": "https://mcp.thekingdom.dev",
+    "health": "https://mcp.thekingdom.dev/health"
+   },
+   "runtime": "fly:kingdom-mcp"
+  },
+  {
    "id": "kingdom-daily",
    "what": "daily routines (catalog-refresh 06:00, registry-check 09:00)",
    "audience": "operator",
@@ -237,6 +253,13 @@
   {
    "id": "kingdom-pulse",
    "what": "THIS heartbeat — probes this registry every 30 min → ~/.kingdom/STATUS.md",
+   "audience": "operator",
+   "status": "live",
+   "runtime": "local"
+  },
+  {
+   "id": "chain-backup",
+   "what": "nightly zerone chain backup → Tigris kingdom-vault (both nets, keep 14, hot-copy)",
    "audience": "operator",
    "status": "live",
    "runtime": "local"

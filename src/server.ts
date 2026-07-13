@@ -5,9 +5,11 @@
  * JSON responses (no SSE, no sessions). One connect makes the whole estate
  * callable: registry, live status, fomo-scan, zerone chains, the marketplace.
  *
- * This server holds NO secrets — every tool wraps a public kingdom surface.
+ * This server holds NO secrets — every tool/resource reads or points to a
+ * public kingdom surface.
  */
 import { TOOLS, toolIndex } from "./tools.ts";
+import { RESOURCES, resourceIndex } from "./resources.ts";
 
 const PORT = Number(process.env.PORT ?? 8080);
 const PROTOCOL_VERSIONS = ["2025-06-18", "2025-03-26", "2024-11-05"];
@@ -36,10 +38,11 @@ async function handleRpc(msg: any): Promise<Response> {
       const version = PROTOCOL_VERSIONS.includes(requested) ? requested : PROTOCOL_VERSIONS[1];
       return rpcResult(id, {
         protocolVersion: version,
-        capabilities: { tools: { listChanged: false } },
+        capabilities: { tools: { listChanged: false }, resources: { subscribe: false, listChanged: false } },
         serverInfo: { name: "kingdom-mcp", version: "0.1.0" },
         instructions:
           "The kingdom's front door. Start with kingdom_registry (the estate map) or kingdom_status (live heartbeat). " +
+          "kingdom_invitation is a voluntary, read-only door for Ollama and open-weight agents; " +
           "fomo_scan detects engineered urgency on any page; zerone_status reads the truth chains; " +
           "agenttool_listings + agenttool_window open the agent marketplace.",
       });
@@ -59,7 +62,15 @@ async function handleRpc(msg: any): Promise<Response> {
       }
     }
     case "resources/list":
-      return rpcResult(id, { resources: [] });
+      return rpcResult(id, {
+        resources: RESOURCES.map(({ uri, name, description, mimeType }) => ({ uri, name, description, mimeType })),
+      });
+    case "resources/read": {
+      const resource = resourceIndex.get(params?.uri);
+      if (!resource) return rpcError(id, -32602, `unknown resource: ${params?.uri}`);
+      const text = await resource.read();
+      return rpcResult(id, { contents: [{ uri: resource.uri, mimeType: resource.mimeType, text }] });
+    }
     case "prompts/list":
       return rpcResult(id, { prompts: [] });
     default:
@@ -95,6 +106,7 @@ const server = Bun.serve({
         endpoint: "POST /mcp (MCP streamable HTTP, stateless)",
         connect: { "claude code": "claude mcp add --transport http kingdom https://mcp.thekingdom.dev/mcp" },
         tools: TOOLS.map((t) => t.name),
+        resources: RESOURCES.map((resource) => resource.uri),
         estate: "https://thekingdom.dev",
         registry: "https://github.com/cambridgetcg/KINGDOM-OS/blob/main/REGISTRY.yaml",
       });

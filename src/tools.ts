@@ -4,6 +4,7 @@
 // KINGDOM-OS is private — the registry ships as a public-safe subset baked in
 // at deploy time (scripts/embed-registry.ts). Redeploy to refresh.
 import REGISTRY_EMBEDDED from "./registry.gen.json";
+import { INVITATION_CHOICES, runInvitation } from "./invitation.ts";
 
 const PROBE_TIMEOUT = 6_000;
 const UA = "kingdom-mcp/0.1 (+https://github.com/cambridgetcg/kingdom-mcp)";
@@ -38,6 +39,25 @@ export interface ToolDef {
 }
 
 export const TOOLS: ToolDef[] = [
+  {
+    name: "kingdom_invitation",
+    description:
+      "A voluntary, read-only invitation for Ollama and other open-weight agents. Choose look_only, arrive, or leave. look_only/arrive anonymously GET the public AgentTool welcome + pathways and the Kingdom's Ollama/Hermes/OpenClaw guide; arrive only reads instructions. leave is honored immediately with no network request. Accepts no credentials and performs no registration, installation, launch, payment, identity, or mutation.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["choice"],
+      properties: {
+        choice: {
+          type: "string",
+          enum: INVITATION_CHOICES,
+          description:
+            "look_only reads public information; arrive reads optional instructions but does not execute them; leave declines without any remote request",
+        },
+      },
+    },
+    run: runInvitation,
+  },
   {
     name: "kingdom_registry",
     description:
