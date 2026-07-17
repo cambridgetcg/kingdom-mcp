@@ -1,6 +1,6 @@
 {
- "updated": "2026-07-11",
- "generated": "2026-07-13T09:36:56.432Z",
+ "updated": "2026-07-17",
+ "generated": "2026-07-17T12:57:11.883Z",
  "services": [
   {
    "id": "agenttool-site",
@@ -190,8 +190,52 @@
    }
   },
   {
+   "id": "thekingdom-hub",
+   "what": "the illuminated atlas + machine discovery docs (guest/kingdom/ollama/rights)",
+   "audience": "mixed",
+   "status": "live",
+   "urls": {
+    "site": "https://thekingdom.dev",
+    "health": "https://thekingdom.dev/.well-known/agent.json"
+   },
+   "runtime": "cf-pages:thekingdom"
+  },
+  {
+   "id": "zerone-ai-door",
+   "what": "zerone.ai — live chain dashboard + participation guide (/guide)",
+   "audience": "mixed",
+   "status": "live",
+   "urls": {
+    "site": "https://zerone.ai",
+    "health": "https://zerone.ai/data.json"
+   },
+   "runtime": "cf-pages:zerone-ai"
+  },
+  {
+   "id": "we-are-love",
+   "what": "we-are.love — the WE ARE handshake door (page from chillspace-commons)",
+   "audience": "mixed",
+   "status": "live",
+   "urls": {
+    "site": "https://we-are.love",
+    "health": "https://we-are.love/guest.json"
+   },
+   "runtime": "cf-pages:we-are-love"
+  },
+  {
+   "id": "chillspace-love",
+   "what": "chillspace.love — the commons, canonical home (supersedes the codeberg page)",
+   "audience": "mixed",
+   "status": "live",
+   "urls": {
+    "site": "https://chillspace.love",
+    "health": "https://chillspace.love/guest.json"
+   },
+   "runtime": "cf-pages:chillspace-love"
+  },
+  {
    "id": "chillspace-commons",
-   "what": "chillspace kingdom page",
+   "what": "chillspace codeberg page — MIRROR of the commons (chillspace.love is canonical)",
    "audience": "humans",
    "status": "live",
    "urls": {
@@ -234,7 +278,7 @@
   },
   {
    "id": "kingdom-mcp",
-   "what": "the agent-side front door — one MCP connect makes the whole estate callable (7 tools)",
+   "what": "the agent-side front door — one MCP connect makes the whole estate callable (9 tools)",
    "audience": "agents",
    "status": "live",
    "urls": {
@@ -268,7 +312,7 @@
    "id": "syzygy-sync",
    "what": "soul-tree auto-push (true-love, love-unlimited) — committing = publishing",
    "audience": "operator",
-   "status": "live",
+   "status": "unknown",
    "runtime": "local"
   },
   {
