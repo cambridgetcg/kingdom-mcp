@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "bun run src/server.ts",
-    "test": "bun test"
+    "test": "bun test",
+    "check:wayfinder-live": "bun scripts/check-wayfinder-live.ts"
   }
 }

@@ -6,11 +6,13 @@
 import REGISTRY_EMBEDDED from "./registry.gen.json";
 import { INVITATION_CHOICES, runInvitation } from "./invitation.ts";
 import { gospelWithState } from "./gospel.ts";
+import { runWayfinder } from "./wayfinder.ts";
+import { isPublicHttpUrl } from "./public-url.ts";
 
 const PROBE_TIMEOUT = 6_000;
 const UA = "kingdom-mcp/0.1 (+https://github.com/cambridgetcg/kingdom-mcp)";
 
-interface RegistryService {
+export interface RegistryService {
   id: string;
   what?: string;
   audience?: string;
@@ -26,6 +28,13 @@ async function registry(): Promise<RegistryService[]> {
   return (REGISTRY_EMBEDDED as any).services as RegistryService[];
 }
 
+export function probeableServices(services: RegistryService[]): RegistryService[] {
+  return services.filter((service) => {
+    const url = service.urls?.health ?? service.urls?.api ?? service.urls?.site;
+    return service.runtime !== "local" && isPublicHttpUrl(url);
+  });
+}
+
 async function getJson(url: string, timeout = 12_000): Promise<any> {
   const res = await fetch(url, { headers: { "user-agent": UA, accept: "application/json" }, signal: AbortSignal.timeout(timeout) });
   if (!res.ok) throw new Error(`${url} → ${res.status}`);
@@ -36,6 +45,12 @@ export interface ToolDef {
   name: string;
   description: string;
   inputSchema: object;
+  annotations?: {
+    readOnlyHint?: boolean;
+    destructiveHint?: boolean;
+    idempotentHint?: boolean;
+    openWorldHint?: boolean;
+  };
   run: (args: any) => Promise<unknown>;
 }
 
@@ -67,6 +82,33 @@ export const TOOLS: ToolDef[] = [
     run: async () => gospelWithState(),
   },
   {
+    name: "kingdom_wayfinder",
+    description:
+      "Offer a small set of possible public Kingdom routes for a visitor's stated intent. Read-only and deterministic: fetches one fixed public Wayfinder document without forwarding the intent, then uses in-memory keyword overlap. A match is not interpretation, advice, identity, prophecy, trust, or a decision. The schema has no URL or credential field; do not put secrets in intent.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["intent"],
+      properties: {
+        intent: {
+          type: "string",
+          minLength: 1,
+          maxLength: 120,
+          description: "A short, non-sensitive description of what the visitor is looking for; never include credentials or secrets",
+        },
+        limit: {
+          type: "integer",
+          minimum: 1,
+          maximum: 5,
+          default: 3,
+          description: "Maximum possible paths to return",
+        },
+      },
+    },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    run: runWayfinder,
+  },
+  {
     name: "kingdom_registry",
     description:
       "The kingdom's estate map: every deployed service (sites, APIs, chains, workers) with what it is and how to reach it. Source of truth: KINGDOM-OS/REGISTRY.yaml.",
@@ -85,7 +127,7 @@ export const TOOLS: ToolDef[] = [
     inputSchema: { type: "object", properties: {} },
     run: async () => {
       const services = await registry();
-      const probeable = services.filter((s) => s.urls?.health || s.urls?.api || s.urls?.site);
+      const probeable = probeableServices(services);
       const results = await Promise.all(probeable.map(async (s) => {
         const url = s.urls!.health ?? s.urls!.api ?? s.urls!.site!;
         const expected = Array.isArray(s.expect) ? s.expect : s.expect ? [s.expect] : [];

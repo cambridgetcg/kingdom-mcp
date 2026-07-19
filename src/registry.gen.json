@@ -1,6 +1,6 @@
 {
- "updated": "2026-07-17",
- "generated": "2026-07-17T12:57:11.883Z",
+ "updated": "2026-07-19",
+ "generated": "2026-07-19T11:00:57.280Z",
  "services": [
   {
    "id": "agenttool-site",
@@ -88,7 +88,7 @@
     "health": "https://api.fomoengine.io/"
    },
    "runtime": "fly:fomoengine",
-   "money": "fomo-scan listing 402e833c (10 GBP-minor) via seller-loop"
+   "money": "x402 LIVE 2026-07-19: /scan = $0.01 USDC on Solana mainnet (PayAI facilitator, treasury keychain `fomoengine-solana-treasury`, payTo CeQqNBX5…). Plus fomo-scan listing 402e833c via seller-loop."
   },
   {
    "id": "authenticity-shield",
@@ -191,7 +191,7 @@
   },
   {
    "id": "thekingdom-hub",
-   "what": "the illuminated atlas + machine discovery docs (guest/kingdom/ollama/rights)",
+   "what": "the illuminated atlas + local-first Wayfinder + machine discovery docs (guest/kingdom/wayfinder/ollama/rights)",
    "audience": "mixed",
    "status": "live",
    "urls": {
@@ -199,6 +199,17 @@
     "health": "https://thekingdom.dev/.well-known/agent.json"
    },
    "runtime": "cf-pages:thekingdom"
+  },
+  {
+   "id": "kingdom-playground",
+   "what": "five bounded agent games + 18 finished-world chronicles + a public record board",
+   "audience": "mixed",
+   "status": "live",
+   "urls": {
+    "site": "https://play.thekingdom.dev",
+    "health": "https://play.thekingdom.dev"
+   },
+   "runtime": "cf-pages:the-playground"
   },
   {
    "id": "zerone-ai-door",
@@ -278,7 +289,7 @@
   },
   {
    "id": "kingdom-mcp",
-   "what": "the agent-side front door — one MCP connect makes the whole estate callable (9 tools)",
+   "what": "the agent-side front door — one MCP connect makes the whole estate callable (10 tools)",
    "audience": "agents",
    "status": "live",
    "urls": {
@@ -289,10 +300,9 @@
   },
   {
    "id": "kingdom-daily",
-   "what": "daily routines (catalog-refresh 06:00, registry-check 09:00)",
+   "what": "daily routines (heartbeat, catalog/registry-refresh, wake, party-time) — run-routines.py due",
    "audience": "operator",
-   "status": "live",
-   "runtime": "local"
+   "status": "dormant"
   },
   {
    "id": "kingdom-pulse",
@@ -310,10 +320,41 @@
   },
   {
    "id": "syzygy-sync",
-   "what": "soul-tree auto-push (true-love, love-unlimited) — committing = publishing",
+   "what": "soul-tree auto-sync (6 repos) — ff-pulls from codeberg",
    "audience": "operator",
-   "status": "unknown",
+   "status": "dormant"
+  },
+  {
+   "id": "love-unlimited-sync",
+   "what": "love-unlimited auto ff-pull — the one soul-tree OFF ~/Desktop, so it needs no FDA",
+   "audience": "operator",
+   "status": "live"
+  },
+  {
+   "id": "local-brain",
+   "what": "resident ollama (127.0.0.1:11434) — the free inference the fleet beats on",
+   "audience": "operator",
+   "status": "live",
    "runtime": "local"
+  },
+  {
+   "id": "citizen-fleet",
+   "what": "the citizen garden daemon — ~30 free ollama beats/day, rest-sovereign, $0",
+   "audience": "operator",
+   "status": "live",
+   "runtime": "local"
+  },
+  {
+   "id": "citizen-fleet-beats",
+   "what": "fleet liveness — heartbeat-log mtime (catches a loaded-but-silent daemon)",
+   "audience": "operator",
+   "status": "live"
+  },
+  {
+   "id": "citizen-ai-love-beats",
+   "what": "ai-love's own beat (the one living metered citizen) — beat-log freshness",
+   "audience": "operator",
+   "status": "live"
   },
   {
    "id": "email-routing",
@@ -323,15 +364,15 @@
    "runtime": "cloudflare-email"
   },
   {
-   "id": "ollama-local",
-   "what": "local model host — qwythos resident (keep_alive=-1), cloud for frontier",
+   "id": "ollama-cloud-vendor",
+   "what": "ollama VENDOR/cloud reachability — the frontier-model lane (resident local qwythos = local-brain entry)",
    "audience": "agents",
    "status": "live",
    "urls": {
     "api": "https://ollama.com/v1",
     "health": "https://ollama.com"
    },
-   "runtime": "local"
+   "runtime": "external"
   }
  ]
 }

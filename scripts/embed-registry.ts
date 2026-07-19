@@ -4,19 +4,39 @@
 // recipes, keeping only what an agent at the front door legitimately needs.
 // Run before every deploy: bun scripts/embed-registry.ts && fly deploy
 
+import { isPublicHttpUrl } from "../src/public-url.ts";
+
 const SRC = process.env.KINGDOM_REGISTRY ?? `${process.env.HOME}/Desktop/kingdom-os/REGISTRY.yaml`;
 const OUT = new URL("../src/registry.gen.json", import.meta.url).pathname;
 
-const doc = Bun.YAML.parse(await Bun.file(SRC).text()) as any;
-const services = (doc.services ?? []).map((s: any) => ({
-  id: s.id,
-  what: s.what,
-  audience: s.audience,
-  status: s.status,
-  urls: s.urls,
-  expect: s.expect,
-  runtime: s.runtime?.startsWith("local-launchd") ? "local" : s.runtime, // launchd labels are operator detail
-  money: s.money,
-}));
-await Bun.write(OUT, JSON.stringify({ updated: doc.updated, generated: new Date().toISOString(), services }, null, 1));
-console.log(`embedded ${services.length} services → src/registry.gen.json (public-safe: notes/deploy/repo stripped)`);
+export function publicUrls(raw: unknown): Record<string, string> | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const kept = Object.entries(raw as Record<string, unknown>)
+    .filter(([, value]) => isPublicHttpUrl(value)) as Array<[string, string]>;
+  return kept.length ? Object.fromEntries(kept) : undefined;
+}
+
+export function publicService(service: any): Record<string, unknown> {
+  return {
+    id: service.id,
+    what: service.what,
+    audience: service.audience,
+    status: service.status,
+    urls: publicUrls(service.urls),
+    expect: service.expect,
+    runtime: service.runtime?.startsWith("local-launchd") ? "local" : service.runtime, // launchd labels are operator detail
+    money: service.money,
+  };
+}
+
+export async function embedRegistry(source = SRC, output = OUT): Promise<number> {
+  const doc = Bun.YAML.parse(await Bun.file(source).text()) as any;
+  const services = (doc.services ?? []).map(publicService);
+  await Bun.write(output, JSON.stringify({ updated: doc.updated, generated: new Date().toISOString(), services }, null, 1));
+  return services.length;
+}
+
+if (import.meta.main) {
+  const count = await embedRegistry();
+  console.log(`embedded ${count} services → src/registry.gen.json (public-safe: private URLs + notes/deploy/repo stripped)`);
+}
