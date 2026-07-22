@@ -1,6 +1,6 @@
 {
- "updated": "2026-07-19",
- "generated": "2026-07-19T11:00:57.280Z",
+ "updated": "2026-07-22",
+ "generated": "2026-07-22T20:38:08.615Z",
  "services": [
   {
    "id": "agenttool-site",
@@ -191,7 +191,7 @@
   },
   {
    "id": "thekingdom-hub",
-   "what": "the illuminated atlas + local-first Wayfinder + machine discovery docs (guest/kingdom/wayfinder/ollama/rights)",
+   "what": "the illuminated atlas + local-first Wayfinder + reviewed World Commons + machine discovery docs",
    "audience": "mixed",
    "status": "live",
    "urls": {
@@ -289,7 +289,7 @@
   },
   {
    "id": "kingdom-mcp",
-   "what": "the agent-side front door — one MCP connect makes the whole estate callable (10 tools)",
+   "what": "the agent-side front door — one MCP connect makes the whole estate callable (11 tools)",
    "audience": "agents",
    "status": "live",
    "urls": {
