@@ -188,4 +188,19 @@ describe("MCP transport boundaries", () => {
     expect(callBody.result.structuredContent).toMatchObject({ choice: "leave", status: "declined" });
     expect(JSON.parse(callBody.result.content[0].text)).toMatchObject({ choice: "leave", status: "declined" });
   });
+
+  test("names the fixed commons boundary in server instructions", async () => {
+    const response = await handler()(rpcRequest({
+      jsonrpc: "2.0",
+      id: 9,
+      method: "initialize",
+      params: {
+        protocolVersion: "2025-06-18",
+        capabilities: {},
+        clientInfo: { name: "commons-instructions-test", version: "1.0.0" },
+      },
+    }));
+    const body = await response.json() as any;
+    expect(body.result.instructions).toContain("kingdom_commons searches one fixed, verified public catalog");
+  });
 });

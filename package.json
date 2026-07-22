@@ -6,6 +6,7 @@
   "scripts": {
     "start": "bun run src/server.ts",
     "test": "bun test",
-    "check:wayfinder-live": "bun scripts/check-wayfinder-live.ts"
+    "check:wayfinder-live": "bun scripts/check-wayfinder-live.ts",
+    "check:commons-live": "bun scripts/check-commons-live.ts"
   }
 }
