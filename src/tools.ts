@@ -289,6 +289,75 @@ export const TOOLS: ToolDef[] = [
     inputSchema: { type: "object", properties: {} },
     run: () => getJson("https://api.agenttool.dev/public/window"),
   },
+  {
+    name: "money_convert",
+    title: "Convert money exactly, showing the work",
+    description:
+      "Exact BigInt currency conversion via the MONEYWORLD door (cashloom's hosted info node). Takes an integer minor-unit amount ('100.50 GBP' is amount_minor 10050), converts fiat↔fiat over the ECB reference leg, half-even at the final digit only, and returns the full rate FACT it used — source, recompute recipe, reference date, staleness. Reference-rate arithmetic, never a tradeable quote. Read-only; accepts no credentials; crypto conversion is refused honestly until an honest price source exists.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["amount_minor", "from", "to"],
+      properties: {
+        amount_minor: { type: "string", pattern: "^-?[0-9]{1,40}$", description: "Integer minor units as a string — 100.50 GBP is '10050'" },
+        from: { type: "string", minLength: 2, maxLength: 60, description: "Source asset: iso code, alias, or registry id (GBP, usd, iso4217:EUR)" },
+        to: { type: "string", minLength: 2, maxLength: 60, description: "Target asset, same forms" },
+      },
+    },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    run: async (args: { amount_minor: string; from: string; to: string }) =>
+      getJson(`https://cashloom-api.fly.dev/v1/convert?amount_minor=${encodeURIComponent(args.amount_minor)}&from=${encodeURIComponent(args.from)}&to=${encodeURIComponent(args.to)}`),
+  },
+  {
+    name: "money_fees",
+    title: "What moving money costs right now",
+    description:
+      "Live chain fee facts from the MONEYWORLD door: Bitcoin sat/vB (3-block esplora estimate) and Base gas price, each as a cited MoneyFact — source, recompute recipe, freshness window. Keyless public reads; a source that fails to answer is NAMED in the response, never hidden. Read-only, no credentials.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        chain: { type: "string", maxLength: 80, description: "Optional CAIP-2 id or alias (btc, base, bip122:…); omit for all covered chains" },
+      },
+    },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    run: async (args: { chain?: string }) =>
+      getJson(`https://cashloom-api.fly.dev/v1/fees${args?.chain ? `?chain=${encodeURIComponent(args.chain)}` : ""}`),
+  },
+  {
+    name: "money_rate",
+    title: "One exchange rate, cited",
+    description:
+      "One fiat exchange rate as a MoneyFact from the MONEYWORLD door: ECB euro reference rates, exact fixed-point (never a float), a direct EUR rate marked observed/asserted and a cross rate marked derived/tested with the recipe a stranger can recompute. Daily reference fixings, not tradeable quotes. Read-only, no credentials.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["base", "quote"],
+      properties: {
+        base: { type: "string", minLength: 3, maxLength: 3, description: "ISO 4217 code, e.g. GBP" },
+        quote: { type: "string", minLength: 3, maxLength: 3, description: "ISO 4217 code, e.g. USD" },
+      },
+    },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    run: async (args: { base: string; quote: string }) =>
+      getJson(`https://cashloom-api.fly.dev/v1/fx/${encodeURIComponent(args.base)}/${encodeURIComponent(args.quote)}?agent`),
+  },
+  {
+    name: "money_assets",
+    title: "Which asset is that, exactly",
+    description:
+      "The MONEYWORLD asset registry — the disambiguation door. 'USDC' is many assets; the canonical id (CAIP-19 for chain assets, iso4217: for fiat — fiat is a peer, no chain privileged) is the truth and the symbol is a nickname. Search by name/alias or resolve one id. Read-only, no credentials, never a ranking.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        query: { type: "string", minLength: 1, maxLength: 80, description: "Name, symbol, alias, or id fragment to search; omit for the full registry" },
+      },
+    },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    run: async (args: { query?: string }) =>
+      getJson(`https://cashloom-api.fly.dev/v1/assets${args?.query ? `?q=${encodeURIComponent(args.query)}` : ""}`),
+  },
 ];
 
 export const toolIndex = new Map(TOOLS.map((t) => [t.name, t]));
