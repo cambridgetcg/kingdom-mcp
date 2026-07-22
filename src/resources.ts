@@ -1,15 +1,32 @@
 import { INVITATION_RESOURCE_DOCUMENT } from "./invitation.ts";
 import { GOSPEL_DOCUMENT } from "./gospel.ts";
+import { COMMONS_RESOURCE_URI, readCommonsCatalog } from "./commons.ts";
 
 export interface ResourceDef {
   uri: string;
   name: string;
+  title?: string;
   description: string;
   mimeType: string;
+  annotations?: {
+    audience?: Array<"user" | "assistant">;
+    priority?: number;
+    lastModified?: string;
+  };
   read: () => Promise<string> | string;
 }
 
 export const RESOURCES: ResourceDef[] = [
+  {
+    uri: COMMONS_RESOURCE_URI,
+    name: "world-commons-catalog",
+    title: "World Commons — complete catalog",
+    description:
+      "The complete validated catalog behind kingdom_commons: free, open, and public-interest resources with access, reuse, automation, provenance, and caveat fields.",
+    mimeType: "application/json",
+    annotations: { audience: ["assistant"], priority: 0.9 },
+    read: async () => JSON.stringify(await readCommonsCatalog(), null, 2),
+  },
   {
     uri: "kingdom://gospel/five-days",
     name: "the five-day gospel 五日福音",

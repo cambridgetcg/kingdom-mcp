@@ -171,11 +171,16 @@ describe("MCP transport boundaries", () => {
     }));
     const listBody = await listed.json() as any;
     const wayfinder = listBody.result.tools.find(({ name }: { name: string }) => name === "kingdom_wayfinder");
+    const commons = listBody.result.tools.find(({ name }: { name: string }) => name === "kingdom_commons");
     expect(wayfinder.annotations).toEqual({
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
       openWorldHint: true,
+    });
+    expect(commons).toMatchObject({
+      title: "Find free public resources",
+      outputSchema: { type: "object" },
     });
 
     const called = await fetch(rpcRequest({
@@ -201,6 +206,24 @@ describe("MCP transport boundaries", () => {
       },
     }));
     const body = await response.json() as any;
-    expect(body.result.instructions).toContain("kingdom_commons searches one fixed, verified public catalog");
+    expect(body.result.instructions).toContain("kingdom_commons returns compact matches from one fixed, verified public catalog");
+    expect(body.result.instructions).toContain("kingdom://commons/catalog");
+  });
+
+  test("lists the complete commons catalog as assistant-oriented context", async () => {
+    const response = await handler()(rpcRequest({
+      jsonrpc: "2.0",
+      id: 10,
+      method: "resources/list",
+      params: {},
+    }));
+    const body = await response.json() as any;
+    expect(body.result.resources.find(({ uri }: { uri: string }) => uri === "kingdom://commons/catalog"))
+      .toMatchObject({
+        name: "world-commons-catalog",
+        title: "World Commons — complete catalog",
+        mimeType: "application/json",
+        annotations: { audience: ["assistant"], priority: 0.9 },
+      });
   });
 });

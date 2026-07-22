@@ -1,6 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import {
+  COMMONS_ACCOUNTS,
+  COMMONS_AUTOMATION_STATUSES,
   COMMONS_CATEGORY_IDS,
+  COMMONS_COSTS,
+  COMMONS_DETAIL_LEVELS,
+  COMMONS_OUTPUT_SCHEMA,
+  COMMONS_RESOURCE_URI,
+  COMMONS_REUSE_STATUSES,
   COMMONS_SCHEMA_VERSION,
   COMMONS_SOURCE_TIMEOUT_MS,
   COMMONS_SOURCE_URL,
@@ -144,9 +151,20 @@ function sourceResponse(
 
 const commonsTool = TOOLS.find(({ name }) => name === "kingdom_commons")!;
 
+function briefResource(resource: CommonsDocument["resources"][number]) {
+  const { keywords: _keywords, audiences: _audiences, ...brief } = resource;
+  return brief;
+}
+
+function briefKit(kit: CommonsDocument["kits"][number], matchingResourceIds: string[]) {
+  const { glyph: _glyph, keywords: _keywords, ...brief } = kit;
+  return { ...brief, matching_resource_ids: matchingResourceIds };
+}
+
 describe("kingdom_commons published contract", () => {
-  test("publishes exactly need, category, and limit with the fixed category enum", () => {
+  test("publishes compact detail and exact machine filters with a stable output schema", () => {
     expect(commonsTool).toBeDefined();
+    expect(commonsTool.title).toBe("Find free public resources");
     expect(commonsTool.inputSchema).toEqual({
       type: "object",
       additionalProperties: false,
@@ -163,6 +181,32 @@ describe("kingdom_commons published contract", () => {
           enum: COMMONS_CATEGORY_IDS,
           description: expect.any(String),
         },
+        cost: {
+          type: "string",
+          enum: COMMONS_COSTS,
+          description: expect.any(String),
+        },
+        account: {
+          type: "string",
+          enum: COMMONS_ACCOUNTS,
+          description: expect.any(String),
+        },
+        reuse: {
+          type: "string",
+          enum: COMMONS_REUSE_STATUSES,
+          description: expect.any(String),
+        },
+        automation: {
+          type: "string",
+          enum: COMMONS_AUTOMATION_STATUSES,
+          description: expect.any(String),
+        },
+        detail: {
+          type: "string",
+          enum: COMMONS_DETAIL_LEVELS,
+          default: "brief",
+          description: expect.any(String),
+        },
         limit: {
           type: "integer",
           minimum: 1,
@@ -172,6 +216,7 @@ describe("kingdom_commons published contract", () => {
         },
       },
     });
+    expect(commonsTool.outputSchema).toBe(COMMONS_OUTPUT_SCHEMA);
     expect(commonsTool.description).toContain(COMMONS_SOURCE_URL);
     expect(commonsTool.description).toContain("never follows resource links or calls providers");
     expect(commonsTool.description).toContain("never forwards need or copies it into a dedicated response field");
@@ -212,11 +257,14 @@ describe("kingdom_commons fixed-source and privacy boundaries", () => {
     expect(calls[0]!.init?.signal).toBeInstanceOf(AbortSignal);
     expect(COMMONS_SOURCE_TIMEOUT_MS).toBe(12_000);
 
-    expect(result.matches).toEqual([catalog().resources[0]]);
+    expect(result.detail).toBe("brief");
+    expect(result.catalog_resource).toBe(COMMONS_RESOURCE_URI);
+    expect(result).not.toHaveProperty("catalog");
+    expect(result.matches).toEqual([briefResource(catalog().resources[0]!)]);
     expect(result.matches[0].links[1].url).toBe("https://api.osv.dev/v1/query");
     expect(result.provider_boundary).toContain("No listed provider was contacted");
-    expect(result.privacy_boundary).toContain("never puts it in the catalog request or copies it into a dedicated query/response field");
-    expect(result.privacy_boundary).toContain("canonical catalog text can naturally contain");
+    expect(result.privacy_boundary).toContain("not put in the catalog request, persisted, or returned as a field");
+    expect(result.privacy_boundary).toContain("Canonical catalog text may naturally contain");
     expect(result.no_guess).toContain("not endorsements");
     expect(JSON.stringify(result)).not.toContain(privateNeed);
     expect(JSON.stringify(result)).not.toContain("sapphire");
@@ -227,13 +275,14 @@ describe("kingdom_commons fixed-source and privacy boundaries", () => {
     const result = await runCommons({ need: "OSV.dev" }, async () => sourceResponse()) as any;
     expect(result.matches[0].name).toBe("OSV.dev");
     expect(result).not.toHaveProperty("need");
-    expect(result.privacy_boundary).toContain("canonical catalog text can naturally contain");
+    expect(result.privacy_boundary).toContain("Canonical catalog text may naturally contain");
   });
 
-  test("returns full resource and kit metadata while respecting category and limit", async () => {
-    const result = await runCommons({ need: "textbook learn", category: "learning", limit: 1 }, async () => sourceResponse()) as any;
+  test("returns full metadata only when requested while respecting category and limit", async () => {
+    const result = await runCommons({ need: "textbook learn", category: "learning", detail: "full", limit: 1 }, async () => sourceResponse()) as any;
+    expect(result.detail).toBe("full");
     expect(result.matches).toEqual([catalog().resources[1]]);
-    expect(result.matched_kits).toEqual([catalog().kits[1]]);
+    expect(result.matched_kits).toEqual([{ ...catalog().kits[1], matching_resource_ids: ["openstax"] }]);
     expect(result.catalog.categories).toEqual(catalog().categories);
     expect(result.catalog.foundation).toEqual(catalog().foundation);
     expect(result.source).toEqual({
@@ -250,21 +299,51 @@ describe("kingdom_commons fixed-source and privacy boundaries", () => {
     expect(result.matches).toEqual([]);
     expect(result.matched_kits).toEqual([]);
     expect(result.no_match).toContain("will not guess");
-    expect(result.no_guess).toContain("an empty match stays empty");
+    expect(result.no_guess).toContain("empty match stays empty");
   });
 
   test("can offer a literally matched kit without inventing a resource match", async () => {
     const result = await runCommons({ need: "guardrail-bundle" }, async () => sourceResponse()) as any;
     expect(result.matches).toEqual([]);
-    expect(result.matched_kits).toEqual([catalog().kits[0]]);
+    expect(result.matched_kits).toEqual([briefKit(catalog().kits[0]!, ["osv"])]);
     expect(result).not.toHaveProperty("no_match");
   });
 
-  test("refuses extras, credentials, invalid categories, invalid limits, and oversized Unicode before fetching", async () => {
+  test("applies exact filters before ranking and identifies kit resources inside that boundary", async () => {
+    const result = await runCommons({
+      need: "textbook learn",
+      category: "learning",
+      cost: "free",
+      account: "none",
+      reuse: "noncommercial",
+      automation: "limited",
+      limit: 2,
+    }, async () => sourceResponse()) as any;
+
+    expect(result.filters).toEqual({
+      category: "learning",
+      cost: "free",
+      account: "none",
+      reuse: "noncommercial",
+      automation: "limited",
+    });
+    expect(result.matches.map(({ id }: { id: string }) => id)).toEqual(["openstax"]);
+    expect(result.matched_kits[0]).toMatchObject({
+      resource_ids: ["openstax", "project-gutenberg"],
+      matching_resource_ids: ["openstax"],
+    });
+  });
+
+  test("refuses extras, invalid filters, invalid limits, and oversized Unicode before fetching", async () => {
     let calls = 0;
     const fetcher = async () => { calls += 1; return sourceResponse(); };
     await expect(runCommons({ need: "books", api_key: "secret" }, fetcher)).rejects.toThrow("credentials and other fields are refused");
     await expect(runCommons({ need: "books", category: "commerce" }, fetcher)).rejects.toThrow("category must be one of");
+    await expect(runCommons({ need: "books", cost: "paid" }, fetcher)).rejects.toThrow("cost must be one of");
+    await expect(runCommons({ need: "books", account: "secret-account" }, fetcher)).rejects.toThrow("account must be one of");
+    await expect(runCommons({ need: "books", reuse: "anything" }, fetcher)).rejects.toThrow("reuse must be one of");
+    await expect(runCommons({ need: "books", automation: "scrape" }, fetcher)).rejects.toThrow("automation must be one of");
+    await expect(runCommons({ need: "books", detail: "verbose" }, fetcher)).rejects.toThrow("detail must be one of");
     await expect(runCommons({ need: "books", limit: 0 }, fetcher)).rejects.toThrow("integer from 1 to 8");
     await expect(runCommons({ need: "books", limit: 1.5 }, fetcher)).rejects.toThrow("integer from 1 to 8");
     await expect(runCommons({ need: "🌱".repeat(161) }, fetcher)).rejects.toThrow("1-160 characters");

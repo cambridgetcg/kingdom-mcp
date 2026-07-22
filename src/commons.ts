@@ -9,6 +9,7 @@
 import { isPublicHttpUrl } from "./public-url.ts";
 
 export const COMMONS_SOURCE_URL = "https://thekingdom.dev/commons.json";
+export const COMMONS_RESOURCE_URI = "kingdom://commons/catalog";
 export const COMMONS_SCHEMA_VERSION = "thekingdom.world-commons/0.1";
 export const COMMONS_CATEGORY_IDS = [
   "knowledge",
@@ -20,8 +21,26 @@ export const COMMONS_CATEGORY_IDS = [
   "security",
   "culture",
 ] as const;
+export const COMMONS_COSTS = ["free", "free-tier", "local-costs"] as const;
+export const COMMONS_ACCOUNTS = ["none", "free-account", "varies", "contact"] as const;
+export const COMMONS_REUSE_STATUSES = ["open", "mixed", "public-access", "noncommercial"] as const;
+export const COMMONS_AUTOMATION_STATUSES = ["supported", "limited", "human-only", "bulk-preferred", "local"] as const;
+export const COMMONS_DETAIL_LEVELS = ["brief", "full"] as const;
 
 export type CommonsCategoryId = (typeof COMMONS_CATEGORY_IDS)[number];
+export type CommonsCost = (typeof COMMONS_COSTS)[number];
+export type CommonsAccount = (typeof COMMONS_ACCOUNTS)[number];
+export type CommonsReuseStatus = (typeof COMMONS_REUSE_STATUSES)[number];
+export type CommonsAutomationStatus = (typeof COMMONS_AUTOMATION_STATUSES)[number];
+export type CommonsDetail = (typeof COMMONS_DETAIL_LEVELS)[number];
+
+export type CommonsFilters = {
+  category?: CommonsCategoryId;
+  cost?: CommonsCost;
+  account?: CommonsAccount;
+  reuse?: CommonsReuseStatus;
+  automation?: CommonsAutomationStatus;
+};
 
 export const MAX_COMMONS_SOURCE_BYTES = 512 * 1024;
 export const COMMONS_SOURCE_TIMEOUT_MS = 12_000;
@@ -46,19 +65,19 @@ export type CommonsCategory = {
 };
 
 export type CommonsAccess = {
-  cost: "free" | "free-tier" | "local-costs";
-  account: "none" | "free-account" | "varies" | "contact";
+  cost: CommonsCost;
+  account: CommonsAccount;
   note: string;
 };
 
 export type CommonsReuse = {
-  status: "open" | "mixed" | "public-access" | "noncommercial";
+  status: CommonsReuseStatus;
   license: string;
   note: string;
 };
 
 export type CommonsAutomation = {
-  status: "supported" | "limited" | "human-only" | "bulk-preferred" | "local";
+  status: CommonsAutomationStatus;
   auth: "none" | "free-key" | "varies" | "contact" | "not-applicable";
   limits: string;
   note: string;
@@ -130,6 +149,109 @@ export type CommonsDocument = {
   kits: CommonsKit[];
   resources: CommonsResource[];
 };
+
+/** Stable, compact machine contract published with the MCP tool. */
+export const COMMONS_OUTPUT_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "detail", "source", "catalog_resource", "filters", "provider_boundary", "privacy_boundary",
+    "no_guess", "filter_boundary", "matches", "matched_kits",
+  ],
+  properties: {
+    detail: {
+      type: "string",
+      enum: COMMONS_DETAIL_LEVELS,
+      description: "brief is the compact default; full preserves every catalog field",
+    },
+    source: {
+      type: "object",
+      additionalProperties: false,
+      required: ["url", "canonical_url", "schema_version", "generated", "verified"],
+      properties: {
+        url: { type: "string", const: COMMONS_SOURCE_URL },
+        canonical_url: { type: "string", const: COMMONS_SOURCE_URL },
+        schema_version: { type: "string", const: COMMONS_SCHEMA_VERSION },
+        generated: { type: "string" },
+        verified: { type: "string" },
+      },
+    },
+    catalog_resource: {
+      type: "string",
+      const: COMMONS_RESOURCE_URI,
+      description: "MCP resource URI for the complete validated catalog",
+    },
+    filters: {
+      type: "object",
+      additionalProperties: false,
+      description: "Exact catalog filters applied to resource matches; the submitted need is intentionally absent",
+      properties: {
+        category: { type: "string", enum: COMMONS_CATEGORY_IDS },
+        cost: { type: "string", enum: COMMONS_COSTS },
+        account: { type: "string", enum: COMMONS_ACCOUNTS },
+        reuse: { type: "string", enum: COMMONS_REUSE_STATUSES },
+        automation: { type: "string", enum: COMMONS_AUTOMATION_STATUSES },
+      },
+    },
+    catalog: {
+      type: "object",
+      description: "Catalog overview included only when detail is full",
+    },
+    provider_boundary: { type: "string" },
+    privacy_boundary: { type: "string" },
+    no_guess: { type: "string" },
+    filter_boundary: { type: "string" },
+    matches: {
+      type: "array",
+      description: "Ranked resources. Brief records omit only catalog indexing fields; full records add them.",
+      items: {
+        type: "object",
+        additionalProperties: true,
+        required: [
+          "id", "name", "provider", "category_ids", "description", "good_for", "coverage", "access", "reuse",
+          "automation", "links", "caveat", "verified",
+        ],
+        properties: {
+          id: { type: "string" },
+          name: { type: "string" },
+          provider: { type: "string" },
+          category_ids: { type: "array", items: { type: "string", enum: COMMONS_CATEGORY_IDS } },
+          good_for: { type: "array", items: { type: "string" } },
+          coverage: { type: "string" },
+          access: { type: "object" },
+          reuse: { type: "object" },
+          automation: { type: "object" },
+          links: { type: "array", items: { type: "object" } },
+          caveat: { type: "string" },
+          verified: { type: "string" },
+          description: { type: "string" },
+          keywords: { type: "array", items: { type: "string" } },
+          audiences: { type: "array", items: { type: "string" } },
+        },
+      },
+    },
+    matched_kits: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: true,
+        required: ["id", "label", "invitation", "resource_ids", "matching_resource_ids", "boundary", "steps"],
+        properties: {
+          id: { type: "string" },
+          label: { type: "string" },
+          invitation: { type: "string" },
+          resource_ids: { type: "array", items: { type: "string" } },
+          matching_resource_ids: { type: "array", items: { type: "string" } },
+          boundary: { type: "string" },
+          steps: { type: "array", items: { type: "string" } },
+          glyph: { type: "string" },
+          keywords: { type: "array", items: { type: "string" } },
+        },
+      },
+    },
+    no_match: { type: "string" },
+  },
+} as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
@@ -240,8 +362,8 @@ function validateCategory(value: unknown, index: number): CommonsCategory {
 function validateAccess(value: unknown, path: string): CommonsAccess {
   assertExactRecord(value, ["cost", "account", "note"], path);
   return {
-    cost: enumField(value.cost, ["free", "free-tier", "local-costs"] as const, `${path}.cost`),
-    account: enumField(value.account, ["none", "free-account", "varies", "contact"] as const, `${path}.account`),
+    cost: enumField(value.cost, COMMONS_COSTS, `${path}.cost`),
+    account: enumField(value.account, COMMONS_ACCOUNTS, `${path}.account`),
     note: stringField(value.note, `${path}.note`, 1_000),
   };
 }
@@ -249,7 +371,7 @@ function validateAccess(value: unknown, path: string): CommonsAccess {
 function validateReuse(value: unknown, path: string): CommonsReuse {
   assertExactRecord(value, ["status", "license", "note"], path);
   return {
-    status: enumField(value.status, ["open", "mixed", "public-access", "noncommercial"] as const, `${path}.status`),
+    status: enumField(value.status, COMMONS_REUSE_STATUSES, `${path}.status`),
     license: stringField(value.license, `${path}.license`, 300),
     note: stringField(value.note, `${path}.note`, 1_000),
   };
@@ -258,7 +380,7 @@ function validateReuse(value: unknown, path: string): CommonsReuse {
 function validateAutomation(value: unknown, path: string): CommonsAutomation {
   assertExactRecord(value, ["status", "auth", "limits", "note"], path);
   return {
-    status: enumField(value.status, ["supported", "limited", "human-only", "bulk-preferred", "local"] as const, `${path}.status`),
+    status: enumField(value.status, COMMONS_AUTOMATION_STATUSES, `${path}.status`),
     auth: enumField(value.auth, ["none", "free-key", "varies", "contact", "not-applicable"] as const, `${path}.auth`),
     limits: stringField(value.limits, `${path}.limits`, 500),
     note: stringField(value.note, `${path}.note`, 1_000),
@@ -420,7 +542,7 @@ export function validateCommonsDocument(value: unknown): CommonsDocument {
   };
 }
 
-async function readCommonsDocument(fetcher: Fetcher): Promise<CommonsDocument> {
+export async function readCommonsCatalog(fetcher: Fetcher = globalThis.fetch): Promise<CommonsDocument> {
   const response = await fetcher(COMMONS_SOURCE_URL, {
     method: "GET",
     credentials: "omit",
@@ -529,6 +651,19 @@ function compareText(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 
+export function filterCommonsResources(
+  resources: CommonsResource[],
+  filters: CommonsFilters,
+): CommonsResource[] {
+  return resources.filter((resource) =>
+    (!filters.category || resource.category_ids.includes(filters.category)) &&
+    (!filters.cost || resource.access.cost === filters.cost) &&
+    (!filters.account || resource.access.account === filters.account) &&
+    (!filters.reuse || resource.reuse.status === filters.reuse) &&
+    (!filters.automation || resource.automation.status === filters.automation)
+  );
+}
+
 function rankCommonsKits(
   kits: CommonsKit[],
   need: string,
@@ -555,12 +690,56 @@ function rankCommonsKits(
     .sort((a, b) => b.score - a.score || compareText(a.kit.label, b.kit.label) || compareText(a.kit.id, b.kit.id));
 }
 
-function parseArgs(raw: unknown): { need: string; category?: CommonsCategoryId; limit: number } {
-  if (!isRecord(raw)) throw new Error("arguments must be an object with need and optional category and limit");
-  const allowed = new Set(["need", "category", "limit"]);
+function briefResource(resource: CommonsResource) {
+  return {
+    id: resource.id,
+    name: resource.name,
+    provider: resource.provider,
+    category_ids: resource.category_ids,
+    description: resource.description,
+    good_for: resource.good_for,
+    coverage: resource.coverage,
+    access: resource.access,
+    reuse: resource.reuse,
+    automation: resource.automation,
+    links: resource.links,
+    caveat: resource.caveat,
+    verified: resource.verified,
+  };
+}
+
+function formatKit(kit: CommonsKit, allowedResourceIds: Set<string>, detail: CommonsDetail) {
+  const matchingResourceIds = kit.resource_ids.filter((id) => allowedResourceIds.has(id));
+  if (detail === "full") return { ...kit, matching_resource_ids: matchingResourceIds };
+  return {
+    id: kit.id,
+    label: kit.label,
+    invitation: kit.invitation,
+    resource_ids: kit.resource_ids,
+    matching_resource_ids: matchingResourceIds,
+    boundary: kit.boundary,
+    steps: kit.steps,
+  };
+}
+
+function optionalEnum<const Values extends readonly string[]>(
+  value: unknown,
+  allowed: Values,
+  name: string,
+): Values[number] | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "string" || !(allowed as readonly string[]).includes(value)) {
+    throw new Error(`${name} must be one of: ${allowed.join(", ")}`);
+  }
+  return value as Values[number];
+}
+
+function parseArgs(raw: unknown): { need: string; filters: CommonsFilters; detail: CommonsDetail; limit: number } {
+  if (!isRecord(raw)) throw new Error("arguments must be an object with need and optional exact filters, detail, and limit");
+  const allowed = new Set(["need", "category", "cost", "account", "reuse", "automation", "detail", "limit"]);
   const extra = Object.keys(raw).filter((key) => !allowed.has(key));
   if (extra.length) {
-    throw new Error("credentials and other fields are refused; provide only need, optional category, and optional limit");
+    throw new Error("credentials and other fields are refused; provide only need, exact catalog filters, detail, and limit");
   }
   if (typeof raw.need !== "string") throw new Error("need must be a string");
   const need = raw.need.trim();
@@ -568,33 +747,41 @@ function parseArgs(raw: unknown): { need: string; category?: CommonsCategoryId; 
     throw new Error(`need must contain 1-${MAX_NEED_LENGTH} characters`);
   }
 
-  let category: CommonsCategoryId | undefined;
-  if (raw.category !== undefined) {
-    if (typeof raw.category !== "string" || !COMMONS_CATEGORY_IDS.includes(raw.category as CommonsCategoryId)) {
-      throw new Error(`category must be one of: ${COMMONS_CATEGORY_IDS.join(", ")}`);
-    }
-    category = raw.category as CommonsCategoryId;
-  }
+  const filters: CommonsFilters = {};
+  const category = optionalEnum(raw.category, COMMONS_CATEGORY_IDS, "category");
+  const cost = optionalEnum(raw.cost, COMMONS_COSTS, "cost");
+  const account = optionalEnum(raw.account, COMMONS_ACCOUNTS, "account");
+  const reuse = optionalEnum(raw.reuse, COMMONS_REUSE_STATUSES, "reuse");
+  const automation = optionalEnum(raw.automation, COMMONS_AUTOMATION_STATUSES, "automation");
+  if (category) filters.category = category;
+  if (cost) filters.cost = cost;
+  if (account) filters.account = account;
+  if (reuse) filters.reuse = reuse;
+  if (automation) filters.automation = automation;
+
+  const detail = optionalEnum(raw.detail, COMMONS_DETAIL_LEVELS, "detail") ?? "brief";
   const limit = raw.limit === undefined ? DEFAULT_LIMIT : raw.limit;
   if (!Number.isInteger(limit) || (limit as number) < 1 || (limit as number) > 8) {
     throw new Error("limit must be an integer from 1 to 8");
   }
-  return { need, category, limit: limit as number };
+  return { need, filters, detail, limit: limit as number };
 }
 
 export async function runCommons(raw: unknown, fetcher: Fetcher = globalThis.fetch): Promise<unknown> {
-  const { need, category, limit } = parseArgs(raw);
-  const document = await readCommonsDocument(fetcher);
-  const rankedResources = rankCommonsResources(document.resources, need, category);
-  const matches = rankedResources.slice(0, limit).map(({ resource }) => resource);
-  const allowedResourceIds = new Set(document.resources
-    .filter((resource) => !category || resource.category_ids.includes(category))
-    .map(({ id }) => id));
+  const { need, filters, detail, limit } = parseArgs(raw);
+  const document = await readCommonsCatalog(fetcher);
+  const eligibleResources = filterCommonsResources(document.resources, filters);
+  const rankedResources = rankCommonsResources(eligibleResources, need);
+  const matches = rankedResources.slice(0, limit).map(({ resource }) =>
+    detail === "full" ? resource : briefResource(resource)
+  );
+  const allowedResourceIds = new Set(eligibleResources.map(({ id }) => id));
   const matchedKits = rankCommonsKits(document.kits, need, rankedResources, allowedResourceIds)
     .slice(0, limit)
-    .map(({ kit }) => kit);
+    .map(({ kit }) => formatKit(kit, allowedResourceIds, detail));
 
   return {
+    detail,
     source: {
       url: COMMONS_SOURCE_URL,
       canonical_url: document.canonical_url,
@@ -602,23 +789,29 @@ export async function runCommons(raw: unknown, fetcher: Fetcher = globalThis.fet
       generated: document.generated,
       verified: document.verified,
     },
-    catalog: {
-      promise: document.promise,
-      methodology: document.methodology,
-      privacy: document.privacy,
-      foundation: document.foundation,
-      categories: document.categories,
-    },
+    catalog_resource: COMMONS_RESOURCE_URI,
+    filters,
+    ...(detail === "full" ? {
+      catalog: {
+        promise: document.promise,
+        methodology: document.methodology,
+        privacy: document.privacy,
+        foundation: document.foundation,
+        categories: document.categories,
+      },
+    } : {}),
     provider_boundary:
-      "No listed provider was contacted. This call made one anonymous GET to the fixed Kingdom catalog URL; provider and resource links are returned only as catalog metadata and were not followed.",
+      "No listed provider was contacted; only the fixed Kingdom catalog was fetched. Resource links are metadata and were not followed.",
     privacy_boundary:
-      "The MCP server receives need because the caller sends it. This tool uses it only in memory for literal matching, never puts it in the catalog request or copies it into a dedicated query/response field, and does not persist it in application storage. Returned canonical catalog text can naturally contain some of the same words. MCP hosting and network infrastructure remain separate boundaries. Do not put credentials or secrets in need.",
+      "need is used only in memory for literal matching: it is not put in the catalog request, persisted, or returned as a field. Canonical catalog text may naturally contain the same words. Hosting and network infrastructure remain separate; never send secrets.",
     no_guess:
-      "Matches use normalized literal words from published catalog fields and explicit kit-resource references only. They are possibilities, not endorsements, professional advice, eligibility findings, or inferred intent; an empty match stays empty.",
+      "Literal possibilities only: not endorsements, professional advice, eligibility findings, or inferred intent. An empty match stays empty.",
+    filter_boundary:
+      "Exact filters apply to matches; each kit's matching_resource_ids shows references inside that boundary.",
     matches,
     matched_kits: matchedKits,
     ...(!matches.length && !matchedKits.length ? {
-      no_match: "No literal catalog match appeared within the selected category boundary. The tool will not guess what the need means.",
+      no_match: "No literal catalog match appeared within the selected exact filters. The tool will not guess what the need means.",
     } : {}),
   };
 }
