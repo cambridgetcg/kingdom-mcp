@@ -7,7 +7,16 @@ import REGISTRY_EMBEDDED from "./registry.gen.json";
 import { INVITATION_CHOICES, runInvitation } from "./invitation.ts";
 import { gospelWithState } from "./gospel.ts";
 import { runWayfinder } from "./wayfinder.ts";
-import { COMMONS_CATEGORY_IDS, runCommons } from "./commons.ts";
+import {
+  COMMONS_ACCOUNTS,
+  COMMONS_AUTOMATION_STATUSES,
+  COMMONS_CATEGORY_IDS,
+  COMMONS_COSTS,
+  COMMONS_DETAIL_LEVELS,
+  COMMONS_OUTPUT_SCHEMA,
+  COMMONS_REUSE_STATUSES,
+  runCommons,
+} from "./commons.ts";
 import { isPublicHttpUrl } from "./public-url.ts";
 
 const PROBE_TIMEOUT = 6_000;
@@ -44,8 +53,10 @@ async function getJson(url: string, timeout = 12_000): Promise<any> {
 
 export interface ToolDef {
   name: string;
+  title?: string;
   description: string;
   inputSchema: object;
+  outputSchema?: object;
   annotations?: {
     readOnlyHint?: boolean;
     destructiveHint?: boolean;
@@ -111,8 +122,9 @@ export const TOOLS: ToolDef[] = [
   },
   {
     name: "kingdom_commons",
+    title: "Find free public resources",
     description:
-      "Find possible genuinely free, open, or public-interest resources from the Kingdom's fixed public commons catalog. Read-only and deterministic: anonymously GETs only https://thekingdom.dev/commons.json, never forwards need or copies it into a dedicated response field, never follows resource links or calls providers, and never persists the request. Returned canonical catalog text can naturally contain the same words. Literal catalog matches are possibilities, not endorsements, advice, eligibility findings, or inferred intent. The schema has no URL or credential field; do not put secrets in need.",
+      "Find possible genuinely free, open, or public-interest resources from the Kingdom's fixed public commons catalog. Compact by default, with exact category, cost, account, reuse, and automation filters; request full detail explicitly or read kingdom://commons/catalog. Read-only and deterministic: anonymously GETs only https://thekingdom.dev/commons.json, never forwards need or copies it into a dedicated response field, never follows resource links or calls providers, and never persists the request. Returned canonical catalog text can naturally contain the same words. Literal catalog matches are possibilities, not endorsements, advice, eligibility findings, or inferred intent. The schema has no URL or credential field; do not put secrets in need.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -129,6 +141,32 @@ export const TOOLS: ToolDef[] = [
           enum: COMMONS_CATEGORY_IDS,
           description: "Optional exact commons category boundary",
         },
+        cost: {
+          type: "string",
+          enum: COMMONS_COSTS,
+          description: "Optional exact cost classification",
+        },
+        account: {
+          type: "string",
+          enum: COMMONS_ACCOUNTS,
+          description: "Optional exact account requirement",
+        },
+        reuse: {
+          type: "string",
+          enum: COMMONS_REUSE_STATUSES,
+          description: "Optional exact reuse classification; verify the returned license and caveat before reuse",
+        },
+        automation: {
+          type: "string",
+          enum: COMMONS_AUTOMATION_STATUSES,
+          description: "Optional exact automation boundary",
+        },
+        detail: {
+          type: "string",
+          enum: COMMONS_DETAIL_LEVELS,
+          default: "brief",
+          description: "brief returns compact agent cards; full returns every matched catalog field and the catalog overview",
+        },
         limit: {
           type: "integer",
           minimum: 1,
@@ -138,6 +176,7 @@ export const TOOLS: ToolDef[] = [
         },
       },
     },
+    outputSchema: COMMONS_OUTPUT_SCHEMA,
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
     run: runCommons,
   },

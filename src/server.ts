@@ -48,10 +48,12 @@ function validInitializeParams(value: unknown): value is Record<string, any> {
 }
 
 function publishedTools(): Array<Record<string, unknown>> {
-  return TOOLS.map(({ name, description, inputSchema, annotations }) => ({
+  return TOOLS.map(({ name, title, description, inputSchema, outputSchema, annotations }) => ({
     name,
+    ...(title ? { title } : {}),
     description,
     inputSchema,
+    ...(outputSchema ? { outputSchema } : {}),
     ...(annotations ? { annotations } : {}),
   }));
 }
@@ -91,7 +93,8 @@ export async function handleRpc(message: unknown): Promise<Response> {
           "The kingdom's front door. Start with kingdom_registry (the estate map) or kingdom_status (live heartbeat). " +
           "kingdom_invitation is a voluntary, read-only door for Ollama and open-weight agents; " +
           "kingdom_wayfinder offers possible public routes from an intent without deciding for the visitor; " +
-          "kingdom_commons searches one fixed, verified public catalog without contacting listed providers; " +
+          "kingdom_commons returns compact matches from one fixed, verified public catalog without contacting listed providers; " +
+          "use exact filters to set boundaries and read kingdom://commons/catalog only when complete context is useful; " +
           "fomo_scan detects engineered urgency on any page; zerone_status reads the truth chains; " +
           "agenttool_listings + agenttool_window open the agent marketplace.",
       });
@@ -107,7 +110,7 @@ export async function handleRpc(message: unknown): Promise<Response> {
         const result = await tool.run(params?.arguments ?? {});
         const structuredContent = isRecord(result) ? { structuredContent: result } : {};
         return rpcResult(id, {
-          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+          content: [{ type: "text", text: JSON.stringify(result) }],
           ...structuredContent,
         });
       } catch (error) {
@@ -119,13 +122,24 @@ export async function handleRpc(message: unknown): Promise<Response> {
     }
     case "resources/list":
       return rpcResult(id, {
-        resources: RESOURCES.map(({ uri, name, description, mimeType }) => ({ uri, name, description, mimeType })),
+        resources: RESOURCES.map(({ uri, name, title, description, mimeType, annotations }) => ({
+          uri,
+          name,
+          ...(title ? { title } : {}),
+          description,
+          mimeType,
+          ...(annotations ? { annotations } : {}),
+        })),
       });
     case "resources/read": {
       const resource = resourceIndex.get(params?.uri);
       if (!resource) return rpcError(id, -32602, `unknown resource: ${params?.uri}`);
-      const text = await resource.read();
-      return rpcResult(id, { contents: [{ uri: resource.uri, mimeType: resource.mimeType, text }] });
+      try {
+        const text = await resource.read();
+        return rpcResult(id, { contents: [{ uri: resource.uri, mimeType: resource.mimeType, text }] });
+      } catch (error) {
+        return rpcError(id, -32002, `resource unavailable: ${(error as Error).message}`);
+      }
     }
     case "prompts/list":
       return rpcResult(id, { prompts: [] });
