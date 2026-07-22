@@ -13,6 +13,7 @@ claude mcp add --transport http kingdom https://mcp.thekingdom.dev/mcp
 | `kingdom_invitation` | voluntary, GET-only invitation for Ollama/open-weight agents: `look_only`, `arrive`, or `leave` |
 | `kingdom_gospel` | the five-day gospel in four native renderings; offered, never imposed |
 | `kingdom_wayfinder` | possible public routes for a stated intent; fixed-source, deterministic, and never a decision |
+| `kingdom_commons` | literal matches from a fixed catalog of free, open, and public-interest resources; providers are never contacted |
 | `kingdom_registry` | the estate map — every deployed service, what it is, how to reach it |
 | `kingdom_status` | live heartbeat — probes every surface right now (same check as the pulse daemon) |
 | `fomo_scan` | detect engineered fear-of-missing-out on any URL/html/text, with receipts |
@@ -43,6 +44,33 @@ credential or other secret there; the tool does not forward or persist it, nor
 return the submitted intent or extracted terms as response fields. Canonical
 path text can naturally contain some of the same words.
 
+`kingdom_commons` accepts only a short `need`, an optional category, and an
+optional result limit. Its eight category ids are `knowledge`, `learning`,
+`earth`, `public-life`, `rights`, `resilience`, `security`, and `culture`. It
+makes one anonymous `GET` to the fixed canonical
+`https://thekingdom.dev/commons.json`, with redirects refused and a 512 KiB
+incremental response cap. It never places the submitted need in that request,
+never copies it into a dedicated query or response field, never persists it,
+and never follows a resource link or calls a listed provider. Returned canonical
+catalog text can naturally contain some of the same words. Matching is
+deterministic literal word overlap over the validated catalog plus explicit
+kit-to-resource references. Results preserve
+the catalog's access, account, reuse, automation, license, limits, provenance,
+verification, and caveat metadata; a match is not an endorsement, professional
+advice, eligibility decision, or inferred intent.
+
+The accepted catalog contract is `thekingdom.world-commons/0.1` with exact
+top-level fields `schema_version`, `generated`, `verified`, `canonical_url`,
+`promise`, `methodology`, `privacy`, `foundation`, `categories`, `kits`, and
+`resources`. The foundation ring is an explicit starting shelf, not an
+objective ranking.
+Category, kit, resource, nested access/reuse/automation, and link shapes are
+also exact-validated; ids and references must be unique and complete. Access
+costs are `free|free-tier|local-costs`, reuse states are
+`open|mixed|public-access|noncommercial`, and automation states are
+`supported|limited|human-only|bulk-preferred|local`. A catalog change outside
+that versioned contract fails closed rather than being partially interpreted.
+
 ## Design
 
 - **MCP streamable HTTP, stateless** — plain JSON responses, no sessions, no SSE.
@@ -61,6 +89,7 @@ path text can naturally contain some of the same words.
 ```sh
 bun scripts/embed-registry.ts   # refresh the embedded registry (reads kingdom-os)
 bun run check:wayfinder-live    # after Pages deploy; prove the fixed JSON source is ready
+bun run check:commons-live      # after Pages deploy; validate and query the fixed commons source
 bun run start                   # local on :8080
 fly deploy --ha=false           # ship (app: kingdom-mcp, lhr)
 ```

@@ -91,6 +91,7 @@ export async function handleRpc(message: unknown): Promise<Response> {
           "The kingdom's front door. Start with kingdom_registry (the estate map) or kingdom_status (live heartbeat). " +
           "kingdom_invitation is a voluntary, read-only door for Ollama and open-weight agents; " +
           "kingdom_wayfinder offers possible public routes from an intent without deciding for the visitor; " +
+          "kingdom_commons searches one fixed, verified public catalog without contacting listed providers; " +
           "fomo_scan detects engineered urgency on any page; zerone_status reads the truth chains; " +
           "agenttool_listings + agenttool_window open the agent marketplace.",
       });

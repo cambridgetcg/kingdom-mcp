@@ -7,6 +7,7 @@ import REGISTRY_EMBEDDED from "./registry.gen.json";
 import { INVITATION_CHOICES, runInvitation } from "./invitation.ts";
 import { gospelWithState } from "./gospel.ts";
 import { runWayfinder } from "./wayfinder.ts";
+import { COMMONS_CATEGORY_IDS, runCommons } from "./commons.ts";
 import { isPublicHttpUrl } from "./public-url.ts";
 
 const PROBE_TIMEOUT = 6_000;
@@ -107,6 +108,38 @@ export const TOOLS: ToolDef[] = [
     },
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
     run: runWayfinder,
+  },
+  {
+    name: "kingdom_commons",
+    description:
+      "Find possible genuinely free, open, or public-interest resources from the Kingdom's fixed public commons catalog. Read-only and deterministic: anonymously GETs only https://thekingdom.dev/commons.json, never forwards need or copies it into a dedicated response field, never follows resource links or calls providers, and never persists the request. Returned canonical catalog text can naturally contain the same words. Literal catalog matches are possibilities, not endorsements, advice, eligibility findings, or inferred intent. The schema has no URL or credential field; do not put secrets in need.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["need"],
+      properties: {
+        need: {
+          type: "string",
+          minLength: 1,
+          maxLength: 160,
+          description: "A short, non-sensitive description of the resource sought; never include credentials or secrets",
+        },
+        category: {
+          type: "string",
+          enum: COMMONS_CATEGORY_IDS,
+          description: "Optional exact commons category boundary",
+        },
+        limit: {
+          type: "integer",
+          minimum: 1,
+          maximum: 8,
+          default: 5,
+          description: "Maximum resources and possible kits to return",
+        },
+      },
+    },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    run: runCommons,
   },
   {
     name: "kingdom_registry",
