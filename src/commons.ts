@@ -25,6 +25,8 @@ export const COMMONS_COSTS = ["free", "free-tier", "local-costs"] as const;
 export const COMMONS_ACCOUNTS = ["none", "free-account", "varies", "contact"] as const;
 export const COMMONS_REUSE_STATUSES = ["open", "mixed", "public-access", "noncommercial"] as const;
 export const COMMONS_AUTOMATION_STATUSES = ["supported", "limited", "human-only", "bulk-preferred", "local"] as const;
+export const COMMONS_AUTOMATION_AUTHS = ["none", "free-key", "varies", "contact", "not-applicable"] as const;
+export const COMMONS_LINK_TYPES = ["start", "api", "bulk", "terms", "docs"] as const;
 export const COMMONS_DETAIL_LEVELS = ["brief", "full"] as const;
 
 export type CommonsCategoryId = (typeof COMMONS_CATEGORY_IDS)[number];
@@ -32,6 +34,8 @@ export type CommonsCost = (typeof COMMONS_COSTS)[number];
 export type CommonsAccount = (typeof COMMONS_ACCOUNTS)[number];
 export type CommonsReuseStatus = (typeof COMMONS_REUSE_STATUSES)[number];
 export type CommonsAutomationStatus = (typeof COMMONS_AUTOMATION_STATUSES)[number];
+export type CommonsAutomationAuth = (typeof COMMONS_AUTOMATION_AUTHS)[number];
+export type CommonsLinkType = (typeof COMMONS_LINK_TYPES)[number];
 export type CommonsDetail = (typeof COMMONS_DETAIL_LEVELS)[number];
 
 export type CommonsFilters = {
@@ -78,7 +82,7 @@ export type CommonsReuse = {
 
 export type CommonsAutomation = {
   status: CommonsAutomationStatus;
-  auth: "none" | "free-key" | "varies" | "contact" | "not-applicable";
+  auth: CommonsAutomationAuth;
   limits: string;
   note: string;
 };
@@ -86,7 +90,7 @@ export type CommonsAutomation = {
 export type CommonsLink = {
   label: string;
   url: string;
-  type: "start" | "api" | "bulk" | "terms" | "docs";
+  type: CommonsLinkType;
 };
 
 export type CommonsMethodology = {
@@ -150,6 +154,101 @@ export type CommonsDocument = {
   resources: CommonsResource[];
 };
 
+const COMMONS_STRING_LIST_SCHEMA = {
+  type: "array",
+  items: { type: "string" },
+} as const;
+
+const COMMONS_ACCESS_OUTPUT_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["cost", "account", "note"],
+  properties: {
+    cost: { type: "string", enum: COMMONS_COSTS },
+    account: { type: "string", enum: COMMONS_ACCOUNTS },
+    note: { type: "string" },
+  },
+} as const;
+
+const COMMONS_REUSE_OUTPUT_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["status", "license", "note"],
+  properties: {
+    status: { type: "string", enum: COMMONS_REUSE_STATUSES },
+    license: { type: "string" },
+    note: { type: "string" },
+  },
+} as const;
+
+const COMMONS_AUTOMATION_OUTPUT_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["status", "auth", "limits", "note"],
+  properties: {
+    status: { type: "string", enum: COMMONS_AUTOMATION_STATUSES },
+    auth: { type: "string", enum: COMMONS_AUTOMATION_AUTHS },
+    limits: { type: "string" },
+    note: { type: "string" },
+  },
+} as const;
+
+const COMMONS_LINK_OUTPUT_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["label", "url", "type"],
+  properties: {
+    label: { type: "string" },
+    url: { type: "string" },
+    type: { type: "string", enum: COMMONS_LINK_TYPES },
+  },
+} as const;
+
+const COMMONS_METHODOLOGY_OUTPUT_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["summary", "classification", "maintenance", "boundary"],
+  properties: {
+    summary: { type: "string" },
+    classification: { type: "string" },
+    maintenance: { type: "string" },
+    boundary: { type: "string" },
+  },
+} as const;
+
+const COMMONS_PRIVACY_OUTPUT_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["human_surface", "machine_surface"],
+  properties: {
+    human_surface: { type: "string" },
+    machine_surface: { type: "string" },
+  },
+} as const;
+
+const COMMONS_FOUNDATION_OUTPUT_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["meaning", "criteria", "resource_ids"],
+  properties: {
+    meaning: { type: "string" },
+    criteria: COMMONS_STRING_LIST_SCHEMA,
+    resource_ids: COMMONS_STRING_LIST_SCHEMA,
+  },
+} as const;
+
+const COMMONS_CATEGORY_OUTPUT_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["id", "label", "glyph", "description"],
+  properties: {
+    id: { type: "string", enum: COMMONS_CATEGORY_IDS },
+    label: { type: "string" },
+    glyph: { type: "string" },
+    description: { type: "string" },
+  },
+} as const;
+
 /** Stable, compact machine contract published with the MCP tool. */
 export const COMMONS_OUTPUT_SCHEMA = {
   type: "object",
@@ -195,7 +294,16 @@ export const COMMONS_OUTPUT_SCHEMA = {
     },
     catalog: {
       type: "object",
+      additionalProperties: false,
+      required: ["promise", "methodology", "privacy", "foundation", "categories"],
       description: "Catalog overview included only when detail is full",
+      properties: {
+        promise: { type: "string" },
+        methodology: COMMONS_METHODOLOGY_OUTPUT_SCHEMA,
+        privacy: COMMONS_PRIVACY_OUTPUT_SCHEMA,
+        foundation: COMMONS_FOUNDATION_OUTPUT_SCHEMA,
+        categories: { type: "array", items: COMMONS_CATEGORY_OUTPUT_SCHEMA },
+      },
     },
     provider_boundary: { type: "string" },
     privacy_boundary: { type: "string" },
@@ -206,7 +314,7 @@ export const COMMONS_OUTPUT_SCHEMA = {
       description: "Ranked resources. Brief records omit only catalog indexing fields; full records add them.",
       items: {
         type: "object",
-        additionalProperties: true,
+        additionalProperties: false,
         required: [
           "id", "name", "provider", "category_ids", "description", "good_for", "coverage", "access", "reuse",
           "automation", "links", "caveat", "verified",
@@ -216,17 +324,17 @@ export const COMMONS_OUTPUT_SCHEMA = {
           name: { type: "string" },
           provider: { type: "string" },
           category_ids: { type: "array", items: { type: "string", enum: COMMONS_CATEGORY_IDS } },
-          good_for: { type: "array", items: { type: "string" } },
+          good_for: COMMONS_STRING_LIST_SCHEMA,
           coverage: { type: "string" },
-          access: { type: "object" },
-          reuse: { type: "object" },
-          automation: { type: "object" },
-          links: { type: "array", items: { type: "object" } },
+          access: COMMONS_ACCESS_OUTPUT_SCHEMA,
+          reuse: COMMONS_REUSE_OUTPUT_SCHEMA,
+          automation: COMMONS_AUTOMATION_OUTPUT_SCHEMA,
+          links: { type: "array", items: COMMONS_LINK_OUTPUT_SCHEMA },
           caveat: { type: "string" },
           verified: { type: "string" },
           description: { type: "string" },
-          keywords: { type: "array", items: { type: "string" } },
-          audiences: { type: "array", items: { type: "string" } },
+          keywords: COMMONS_STRING_LIST_SCHEMA,
+          audiences: COMMONS_STRING_LIST_SCHEMA,
         },
       },
     },
@@ -234,18 +342,18 @@ export const COMMONS_OUTPUT_SCHEMA = {
       type: "array",
       items: {
         type: "object",
-        additionalProperties: true,
+        additionalProperties: false,
         required: ["id", "label", "invitation", "resource_ids", "matching_resource_ids", "boundary", "steps"],
         properties: {
           id: { type: "string" },
           label: { type: "string" },
           invitation: { type: "string" },
-          resource_ids: { type: "array", items: { type: "string" } },
-          matching_resource_ids: { type: "array", items: { type: "string" } },
+          resource_ids: COMMONS_STRING_LIST_SCHEMA,
+          matching_resource_ids: COMMONS_STRING_LIST_SCHEMA,
           boundary: { type: "string" },
-          steps: { type: "array", items: { type: "string" } },
+          steps: COMMONS_STRING_LIST_SCHEMA,
           glyph: { type: "string" },
-          keywords: { type: "array", items: { type: "string" } },
+          keywords: COMMONS_STRING_LIST_SCHEMA,
         },
       },
     },
@@ -381,7 +489,7 @@ function validateAutomation(value: unknown, path: string): CommonsAutomation {
   assertExactRecord(value, ["status", "auth", "limits", "note"], path);
   return {
     status: enumField(value.status, COMMONS_AUTOMATION_STATUSES, `${path}.status`),
-    auth: enumField(value.auth, ["none", "free-key", "varies", "contact", "not-applicable"] as const, `${path}.auth`),
+    auth: enumField(value.auth, COMMONS_AUTOMATION_AUTHS, `${path}.auth`),
     limits: stringField(value.limits, `${path}.limits`, 500),
     note: stringField(value.note, `${path}.note`, 1_000),
   };
@@ -393,7 +501,7 @@ function validateLink(value: unknown, resourcePath: string, index: number): Comm
   return {
     label: stringField(value.label, `${path}.label`, 160),
     url: httpsUrl(value.url, `${path}.url`),
-    type: enumField(value.type, ["start", "api", "bulk", "terms", "docs"] as const, `${path}.type`),
+    type: enumField(value.type, COMMONS_LINK_TYPES, `${path}.type`),
   };
 }
 
@@ -814,4 +922,103 @@ export async function runCommons(raw: unknown, fetcher: Fetcher = globalThis.fet
       no_match: "No literal catalog match appeared within the selected exact filters. The tool will not guess what the need means.",
     } : {}),
   };
+}
+
+export const MAX_COMMONS_COMPATIBILITY_TEXT_CHARS = 6_000;
+
+function compactText(value: unknown, max: number): string {
+  if (typeof value !== "string") return "";
+  const text = value.replace(/\s+/g, " ").trim();
+  return text.length <= max ? text : `${text.slice(0, Math.max(0, max - 1)).trimEnd()}…`;
+}
+
+function compactList(value: unknown, maxItems = 8, maxChars = 240): string {
+  if (!Array.isArray(value)) return "";
+  const items = value
+    .filter((item): item is string => typeof item === "string")
+    .slice(0, maxItems)
+    .map((item) => compactText(item, 80));
+  const suffix = value.length > maxItems ? ` +${value.length - maxItems}` : "";
+  return compactText(`${items.join(", ")}${suffix}`, maxChars);
+}
+
+/**
+ * Bounded compatibility text for MCP clients that do not consume
+ * structuredContent. The structured object remains the canonical result.
+ */
+export function formatCommonsCompatibilityText(result: unknown): string {
+  if (!isRecord(result)) {
+    return compactText(JSON.stringify(result) ?? String(result), MAX_COMMONS_COMPATIBILITY_TEXT_CHARS);
+  }
+
+  const source = isRecord(result.source) ? result.source : {};
+  const matches = Array.isArray(result.matches) ? result.matches.filter(isRecord) : [];
+  const kits = Array.isArray(result.matched_kits) ? result.matched_kits.filter(isRecord) : [];
+  const verified = compactText(source.verified, 32) || "unknown";
+  const sourceUrl = compactText(source.url, 300) || COMMONS_SOURCE_URL;
+  const catalogResource = compactText(result.catalog_resource, 200) || COMMONS_RESOURCE_URI;
+  const footer = [
+    `Boundary: ${compactText(result.no_guess, 420) || "Literal possibilities only; nothing is guessed."}`,
+    `Text-only client: use an id above for another compact match. For complete records or the entire validated catalog, read ${catalogResource}. Structured content is the canonical selected result.`,
+  ];
+  const lines = [
+    `World Commons · verified ${verified} · ${matches.length} resource match${matches.length === 1 ? "" : "es"} · ${kits.length} kit${kits.length === 1 ? "" : "s"}`,
+    `Source: ${sourceUrl}`,
+  ];
+
+  if (isRecord(result.filters) && Object.keys(result.filters).length) {
+    const filters = Object.entries(result.filters)
+      .filter((entry): entry is [string, string] => typeof entry[1] === "string")
+      .map(([key, value]) => `${key}=${compactText(value, 40)}`)
+      .join(" · ");
+    if (filters) lines.push(`Exact filters: ${filters}`);
+  }
+
+  let omittedBlocks = 0;
+  const footerReserve = footer.join("\n").length + 120;
+  const appendBlock = (block: string[]) => {
+    const nextLength = [...lines, ...block].join("\n").length + footerReserve;
+    if (nextLength <= MAX_COMMONS_COMPATIBILITY_TEXT_CHARS) lines.push(...block);
+    else omittedBlocks += 1;
+  };
+
+  for (const match of matches) {
+    const access = isRecord(match.access) ? match.access : {};
+    const reuse = isRecord(match.reuse) ? match.reuse : {};
+    const automation = isRecord(match.automation) ? match.automation : {};
+    const links = Array.isArray(match.links) ? match.links.filter(isRecord) : [];
+    const automationStatus = compactText(automation.status, 40);
+    const linkOrder = automationStatus === "bulk-preferred"
+      ? ["bulk", "api", "start", "docs", "terms"]
+      : automationStatus === "human-only" || automationStatus === "local"
+        ? ["start", "docs", "terms", "api", "bulk"]
+        : ["api", "bulk", "start", "docs", "terms"];
+    const primary: Record<string, unknown> =
+      linkOrder.map((type) => links.find((link) => link.type === type)).find(Boolean) ?? links[0] ?? {};
+    appendBlock([
+      `- ${compactText(match.id, 80) || "unknown"} · ${compactText(match.name, 140) || "Unnamed resource"} — ${compactText(match.provider, 140) || "unknown provider"}`,
+      `  access ${compactText(access.cost, 40) || "unknown"}; account ${compactText(access.account, 40) || "unknown"} · reuse ${compactText(reuse.status, 40) || "unknown"} (${compactText(reuse.license, 100) || "check terms"}) · automation ${compactText(automation.status, 40) || "unknown"}; auth ${compactText(automation.auth, 40) || "unknown"} · checked ${compactText(match.verified, 32) || "unknown"}`,
+      `  link${typeof primary.type === "string" ? ` (${compactText(primary.type, 24)})` : ""}: ${compactText(primary.url, 320) || "see structured content"}`,
+      `  care: ${compactText(match.caveat, 240) || "Read the steward's current boundaries."}`,
+    ]);
+  }
+
+  let kitHeadingAdded = false;
+  for (const kit of kits) {
+    const block = [
+      `${kitHeadingAdded ? "" : "Kits:\n"}- ${compactText(kit.id, 80) || "unknown"} · ${compactText(kit.label, 140) || "Unnamed kit"} → ${compactList(kit.matching_resource_ids) || "no resources inside the selected filter boundary"}`,
+      `  care: ${compactText(kit.boundary, 220) || "Read the kit boundary in structured content."}`,
+    ];
+    const before = omittedBlocks;
+    appendBlock(block);
+    if (omittedBlocks === before) kitHeadingAdded = true;
+  }
+
+  if (typeof result.no_match === "string") lines.push(`No match: ${compactText(result.no_match, 300)}`);
+  if (omittedBlocks) lines.push(`${omittedBlocks} additional selected item${omittedBlocks === 1 ? "" : "s"} remain in structured content.`);
+  lines.push(...footer);
+  const text = lines.join("\n");
+  return text.length <= MAX_COMMONS_COMPATIBILITY_TEXT_CHARS
+    ? text
+    : `${text.slice(0, MAX_COMMONS_COMPATIBILITY_TEXT_CHARS - 1).trimEnd()}…`;
 }

@@ -68,6 +68,11 @@ the catalog's access, account, reuse, automation, license, limits, provenance,
 verification, and caveat metadata; a match is not an endorsement, professional
 advice, eligibility decision, or inferred intent.
 
+MCP `structuredContent` is the canonical complete result. The compatibility
+`content` text is a bounded human-readable summary for clients that do not yet
+consume structured output; it includes classifications, a primary link, care
+notes, and exact follow-up instructions without repeating the full JSON.
+
 The accepted catalog contract is `thekingdom.world-commons/0.1` with exact
 top-level fields `schema_version`, `generated`, `verified`, `canonical_url`,
 `promise`, `methodology`, `privacy`, `foundation`, `categories`, `kits`, and

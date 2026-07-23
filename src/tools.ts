@@ -15,6 +15,7 @@ import {
   COMMONS_DETAIL_LEVELS,
   COMMONS_OUTPUT_SCHEMA,
   COMMONS_REUSE_STATUSES,
+  formatCommonsCompatibilityText,
   runCommons,
 } from "./commons.ts";
 import { isPublicHttpUrl } from "./public-url.ts";
@@ -64,6 +65,7 @@ export interface ToolDef {
     openWorldHint?: boolean;
   };
   run: (args: any) => Promise<unknown>;
+  compatibilityText?: (result: unknown) => string;
 }
 
 export const TOOLS: ToolDef[] = [
@@ -179,6 +181,7 @@ export const TOOLS: ToolDef[] = [
     outputSchema: COMMONS_OUTPUT_SCHEMA,
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
     run: runCommons,
+    compatibilityText: formatCommonsCompatibilityText,
   },
   {
     name: "kingdom_registry",
