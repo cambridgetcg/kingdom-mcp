@@ -6,11 +6,14 @@ import {
   COMMONS_CATEGORY_IDS,
   COMMONS_COSTS,
   COMMONS_DETAIL_LEVELS,
+  COMMONS_HANDOFF_MODES,
+  COMMONS_LEGACY_SCHEMA_VERSION,
   COMMONS_LINK_TYPES,
   COMMONS_OUTPUT_SCHEMA,
   COMMONS_RESOURCE_URI,
   COMMONS_REUSE_STATUSES,
   COMMONS_SCHEMA_VERSION,
+  COMMONS_SCHEMA_VERSIONS,
   COMMONS_SOURCE_TIMEOUT_MS,
   COMMONS_SOURCE_URL,
   MAX_COMMONS_COMPATIBILITY_TEXT_CHARS,
@@ -22,6 +25,7 @@ import {
   validateCommonsDocument,
   type CommonsDocument,
 } from "./commons.ts";
+import { handleRpc } from "./server.ts";
 import { TOOLS } from "./tools.ts";
 
 function catalog(): CommonsDocument {
@@ -100,6 +104,11 @@ function catalog(): CommonsDocument {
           { label: "OSV API", url: "https://google.github.io/osv.dev/api/", type: "docs" },
           { label: "OSV query endpoint", url: "https://api.osv.dev/v1/query", type: "api" },
         ],
+        agent_handoff: {
+          mode: "api",
+          url: "https://api.osv.dev/v1/query",
+          instruction: "Use the documented API for bounded checks and keep advisory provenance visible.",
+        },
         caveat: "Coverage and source licensing vary; absence of a match is not proof of safety.",
         verified: "2026-07-22",
       },
@@ -117,6 +126,11 @@ function catalog(): CommonsDocument {
         reuse: { status: "noncommercial", license: "CC BY-NC-SA for most current titles", note: "Verify each title and version." },
         automation: { status: "limited", auth: "none", limits: "No catalog API promised.", note: "Do not scrape aggressively." },
         links: [{ label: "OpenStax", url: "https://openstax.org/", type: "start" }],
+        agent_handoff: {
+          mode: "human",
+          url: "https://openstax.org/",
+          instruction: "Hand title selection to a human and verify the exact title licence before reuse.",
+        },
         caveat: "Current editions are often noncommercial and do not provide course credit.",
         verified: "2026-07-22",
       },
@@ -133,12 +147,24 @@ function catalog(): CommonsDocument {
         access: { cost: "free", account: "none", note: "Supported mirrors and feeds are available." },
         reuse: { status: "mixed", license: "US public domain plus Project Gutenberg terms", note: "Check copyright where reuse occurs." },
         automation: { status: "bulk-preferred", auth: "none", limits: "Do not scrape the main website.", note: "Use robot-access guidance." },
-        links: [{ label: "Robot access", url: "https://www.gutenberg.org/policy/robot_access.html", type: "docs" }],
+        links: [{ label: "Robot access", url: "https://www.gutenberg.org/policy/robot_access.html", type: "bulk" }],
+        agent_handoff: {
+          mode: "bulk",
+          url: "https://www.gutenberg.org/policy/robot_access.html",
+          instruction: "Use the robot-access channel for automation and check local copyright before reuse.",
+        },
         caveat: "A work public domain in the US may remain protected elsewhere.",
         verified: "2026-07-22",
       },
     ],
   };
+}
+
+function legacyCatalog(): CommonsDocument {
+  const document = structuredClone(catalog()) as any;
+  document.schema_version = COMMONS_LEGACY_SCHEMA_VERSION;
+  for (const resource of document.resources) delete resource.agent_handoff;
+  return document;
 }
 
 function sourceResponse(
@@ -225,6 +251,8 @@ describe("kingdom_commons published contract", () => {
     expect(commonsTool.description).toContain(COMMONS_SOURCE_URL);
     expect(commonsTool.description).toContain("never follows resource links or calls providers");
     expect(commonsTool.description).toContain("never forwards need or copies it into a dedicated response field");
+    expect(commonsTool.description).toContain("proposed handoff");
+    expect(commonsTool.description).toContain("not provider contact, authorization, or permission");
     expect(commonsTool.annotations).toEqual({
       readOnlyHint: true,
       destructiveHint: false,
@@ -233,6 +261,7 @@ describe("kingdom_commons published contract", () => {
     });
 
     const output = COMMONS_OUTPUT_SCHEMA as any;
+    expect(output.properties.source.properties.schema_version.enum).toBe(COMMONS_SCHEMA_VERSIONS);
     expect(output.properties.matches.items.additionalProperties).toBe(false);
     expect(output.properties.matches.items.properties.access).toMatchObject({
       additionalProperties: false,
@@ -254,6 +283,21 @@ describe("kingdom_commons published contract", () => {
     });
     expect(output.properties.matches.items.properties.links.items.properties.type.enum)
       .toBe(COMMONS_LINK_TYPES);
+    expect(output.properties.matches.items.required).not.toContain("agent_handoff");
+    expect(output.properties.matches.items.properties.agent_handoff).toMatchObject({
+      additionalProperties: false,
+      required: ["mode", "url", "instruction"],
+    });
+    expect(output.properties.matches.items.properties.agent_handoff.properties.mode.enum)
+      .toBe(COMMONS_HANDOFF_MODES);
+    expect(output.properties.matches.items.properties.agent_handoff.properties.url)
+      .toMatchObject({ pattern: "^https://", minLength: 10, maxLength: 2_000 });
+    expect(output.properties.matches.items.properties.agent_handoff.properties.instruction)
+      .toMatchObject({ minLength: 20, maxLength: 400 });
+    expect(output.properties.matches.items.properties.agent_handoff.description)
+      .toContain("required on schema 0.2 resources and absent on accepted 0.1 rollback resources");
+    expect(output.properties.matches.items.properties.agent_handoff.description)
+      .toContain("API and bulk modes bind to same-typed links");
     expect(output.properties.matched_kits.items.additionalProperties).toBe(false);
     expect(output.properties.catalog).toMatchObject({
       additionalProperties: false,
@@ -299,7 +343,10 @@ describe("kingdom_commons fixed-source and privacy boundaries", () => {
     expect(result).not.toHaveProperty("catalog");
     expect(result.matches).toEqual([briefResource(catalog().resources[0]!)]);
     expect(result.matches[0].links[1].url).toBe("https://api.osv.dev/v1/query");
+    expect(result.matches[0].agent_handoff).toEqual(catalog().resources[0]!.agent_handoff);
     expect(result.provider_boundary).toContain("No listed provider was contacted");
+    expect(result.provider_boundary).toContain("catalog-authored proposed next door only");
+    expect(result.provider_boundary).toContain("not authorization or permission");
     expect(result.privacy_boundary).toContain("not put in the catalog request, persisted, or returned as a field");
     expect(result.privacy_boundary).toContain("Canonical catalog text may naturally contain");
     expect(result.no_guess).toContain("not endorsements");
@@ -331,6 +378,20 @@ describe("kingdom_commons fixed-source and privacy boundaries", () => {
     });
   });
 
+  test("keeps the legacy 0.1 catalog usable during rollback without inventing a handoff", async () => {
+    const result = await runCommons({ need: "security", limit: 1 }, async () =>
+      sourceResponse(legacyCatalog())
+    ) as any;
+    expect(result.source.schema_version).toBe(COMMONS_LEGACY_SCHEMA_VERSION);
+    expect(result.matches).toHaveLength(1);
+    expect(result.matches[0]).not.toHaveProperty("agent_handoff");
+    expect(result.provider_boundary).toContain("Any agent_handoff present");
+    expect(Object.keys(result).sort()).toEqual([
+      "catalog_resource", "detail", "filter_boundary", "filters", "matched_kits", "matches",
+      "no_guess", "privacy_boundary", "provider_boundary", "source",
+    ]);
+  });
+
   test("returns an explicit empty result rather than guessing", async () => {
     const result = await runCommons({ need: "quasar upholstery" }, async () => sourceResponse()) as any;
     expect(result.matches).toEqual([]);
@@ -348,7 +409,8 @@ describe("kingdom_commons fixed-source and privacy boundaries", () => {
     expect(text).toContain("project-gutenberg · Project Gutenberg");
     expect(text).toContain("access free; account none");
     expect(text).toContain("reuse mixed");
-    expect(text).toContain("link (docs): https://www.gutenberg.org/policy/robot_access.html");
+    expect(text).toContain("proposed handoff (bulk; not authorization or permission): https://www.gutenberg.org/policy/robot_access.html");
+    expect(text).toContain("handoff note: Use the robot-access channel");
     expect(text).toContain("care:");
     expect(text).toContain("Kits:");
     expect(text).toContain("Boundary: Literal possibilities only");
@@ -361,11 +423,22 @@ describe("kingdom_commons fixed-source and privacy boundaries", () => {
     expect(text.length).toBeLessThanOrEqual(MAX_COMMONS_COMPATIBILITY_TEXT_CHARS);
   });
 
-  test("prefers an automation-ready link over a human start page", async () => {
+  test("uses the exact authored next door rather than selecting a different link", async () => {
     const result = await runCommons({ need: "osv", limit: 1 }, async () => sourceResponse()) as any;
     const text = formatCommonsCompatibilityText(result);
-    expect(text).toContain("link (api): https://api.osv.dev/v1/query");
+    expect(text).toContain("proposed handoff (api; not authorization or permission): https://api.osv.dev/v1/query");
+    expect(text).toContain("handoff note: Use the documented API");
     expect(text).not.toContain("link (docs): https://google.github.io/osv.dev/api/");
+  });
+
+  test("keeps the primary-link summary for accepted legacy records without inventing a handoff", async () => {
+    const result = await runCommons({ need: "osv", limit: 1 }, async () =>
+      sourceResponse(legacyCatalog())
+    ) as any;
+    const text = formatCommonsCompatibilityText(result);
+    expect(text).toContain("link (api): https://api.osv.dev/v1/query");
+    expect(text).not.toContain("proposed handoff");
+    expect(text).not.toContain("handoff note:");
   });
 
   test("keeps compatibility text bounded even for eight long selected records", async () => {
@@ -430,6 +503,52 @@ describe("kingdom_commons fixed-source and privacy boundaries", () => {
     await expect(runCommons({ need: "🌱".repeat(161) }, fetcher)).rejects.toThrow("1-160 characters");
     await expect(runCommons({ need: "   " }, fetcher)).rejects.toThrow("1-160 characters");
     expect(calls).toBe(0);
+  });
+});
+
+describe("kingdom_commons MCP carriage", () => {
+  test("carries the exact handoff in structured content and the bounded compatibility summary", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () => sourceResponse()) as typeof fetch;
+    try {
+      const response = await handleRpc({
+        jsonrpc: "2.0",
+        id: 41,
+        method: "tools/call",
+        params: { name: "kingdom_commons", arguments: { need: "osv", limit: 1 } },
+      });
+      const body = await response.json() as any;
+      expect(body.result.structuredContent.matches[0].agent_handoff)
+        .toEqual(catalog().resources[0]!.agent_handoff);
+      expect(body.result.content[0].text)
+        .toContain("proposed handoff (api; not authorization or permission): https://api.osv.dev/v1/query");
+      expect(body.result.content[0].text).toContain("handoff note: Use the documented API");
+      expect(body.result.content[0].text).not.toBe(JSON.stringify(body.result.structuredContent));
+      expect(body.result.content[0].text.length).toBeLessThanOrEqual(MAX_COMMONS_COMPATIBILITY_TEXT_CHARS);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("carries the complete validated 0.2 catalog through the assistant resource", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () => sourceResponse()) as typeof fetch;
+    try {
+      const response = await handleRpc({
+        jsonrpc: "2.0",
+        id: 42,
+        method: "resources/read",
+        params: { uri: COMMONS_RESOURCE_URI },
+      });
+      const body = await response.json() as any;
+      const document = JSON.parse(body.result.contents[0].text);
+      expect(document.schema_version).toBe(COMMONS_SCHEMA_VERSION);
+      expect(document.resources).toHaveLength(catalog().resources.length);
+      expect(document.resources.every((resource: any) => resource.agent_handoff)).toBe(true);
+      expect(validateCommonsDocument(document)).toEqual(catalog());
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 });
 
@@ -519,8 +638,9 @@ describe("kingdom_commons source hardening", () => {
 });
 
 describe("kingdom_commons catalog validation", () => {
-  test("accepts the complete stable contract", () => {
+  test("accepts the complete 0.2 contract and the exact legacy 0.1 rollback contract", () => {
     expect(validateCommonsDocument(catalog())).toEqual(catalog());
+    expect(validateCommonsDocument(legacyCatalog())).toEqual(legacyCatalog());
   });
 
   test("rejects top-level and nested shape drift", () => {
@@ -556,6 +676,40 @@ describe("kingdom_commons catalog validation", () => {
     const unsafeLink = catalog() as any;
     unsafeLink.resources[0].links[0].url = "https://127.0.0.1/private";
     expect(() => validateCommonsDocument(unsafeLink)).toThrow("uncredentialed HTTPS URL");
+  });
+
+  test("version-gates handoffs and binds each 0.2 handoff to a published link", () => {
+    const missingHandoff = catalog() as any;
+    delete missingHandoff.resources[0].agent_handoff;
+    expect(() => validateCommonsDocument(missingHandoff)).toThrow("resources[0] has an invalid shape");
+
+    const handoffOnLegacy = legacyCatalog() as any;
+    handoffOnLegacy.resources[0].agent_handoff = catalog().resources[0]!.agent_handoff;
+    expect(() => validateCommonsDocument(handoffOnLegacy)).toThrow("resources[0] has an invalid shape");
+
+    const unknownUrl = catalog() as any;
+    unknownUrl.resources[0].agent_handoff.url = "https://example.com/not-a-published-link";
+    expect(() => validateCommonsDocument(unknownUrl)).toThrow("must exactly match one published resource link");
+
+    const badMode = catalog() as any;
+    badMode.resources[0].agent_handoff.mode = "automatic";
+    expect(() => validateCommonsDocument(badMode)).toThrow("agent_handoff.mode must be one of");
+
+    const shortInstruction = catalog() as any;
+    shortInstruction.resources[0].agent_handoff.instruction = "Use it.";
+    expect(() => validateCommonsDocument(shortInstruction)).toThrow("must contain 20-400 characters");
+
+    const humanOnly = catalog() as any;
+    humanOnly.resources[0].automation.status = "human-only";
+    expect(() => validateCommonsDocument(humanOnly)).toThrow("must be human when automation.status is human-only");
+
+    const mismatchedApiDoor = catalog() as any;
+    mismatchedApiDoor.resources[0].agent_handoff.url = "https://google.github.io/osv.dev/api/";
+    expect(() => validateCommonsDocument(mismatchedApiDoor)).toThrow("must reference an api link");
+
+    const mismatchedBulkDoor = catalog() as any;
+    mismatchedBulkDoor.resources[2].links[0].type = "docs";
+    expect(() => validateCommonsDocument(mismatchedBulkDoor)).toThrow("must reference a bulk link");
   });
 
   test("requires the exact unique category set and unique resource and kit ids", () => {

@@ -94,6 +94,7 @@ export async function handleRpc(message: unknown): Promise<Response> {
           "kingdom_invitation is a voluntary, read-only door for Ollama and open-weight agents; " +
           "kingdom_wayfinder offers possible public routes from an intent without deciding for the visitor; " +
           "kingdom_commons returns compact matches from one fixed, verified public catalog without contacting listed providers; " +
+          "its authored handoff is a proposed next door, never authorization or permission; " +
           "use exact filters to set boundaries and read kingdom://commons/catalog only when complete context is useful; " +
           "fomo_scan detects engineered urgency on any page; zerone_status reads the truth chains; " +
           "agenttool_listings + agenttool_window open the agent marketplace.",

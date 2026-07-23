@@ -10,7 +10,12 @@ import { isPublicHttpUrl } from "./public-url.ts";
 
 export const COMMONS_SOURCE_URL = "https://thekingdom.dev/commons.json";
 export const COMMONS_RESOURCE_URI = "kingdom://commons/catalog";
-export const COMMONS_SCHEMA_VERSION = "thekingdom.world-commons/0.1";
+export const COMMONS_SCHEMA_VERSION = "thekingdom.world-commons/0.2";
+export const COMMONS_LEGACY_SCHEMA_VERSION = "thekingdom.world-commons/0.1";
+export const COMMONS_SCHEMA_VERSIONS = [
+  COMMONS_LEGACY_SCHEMA_VERSION,
+  COMMONS_SCHEMA_VERSION,
+] as const;
 export const COMMONS_CATEGORY_IDS = [
   "knowledge",
   "learning",
@@ -27,8 +32,10 @@ export const COMMONS_REUSE_STATUSES = ["open", "mixed", "public-access", "noncom
 export const COMMONS_AUTOMATION_STATUSES = ["supported", "limited", "human-only", "bulk-preferred", "local"] as const;
 export const COMMONS_AUTOMATION_AUTHS = ["none", "free-key", "varies", "contact", "not-applicable"] as const;
 export const COMMONS_LINK_TYPES = ["start", "api", "bulk", "terms", "docs"] as const;
+export const COMMONS_HANDOFF_MODES = ["api", "bulk", "docs", "human", "local"] as const;
 export const COMMONS_DETAIL_LEVELS = ["brief", "full"] as const;
 
+export type CommonsSchemaVersion = (typeof COMMONS_SCHEMA_VERSIONS)[number];
 export type CommonsCategoryId = (typeof COMMONS_CATEGORY_IDS)[number];
 export type CommonsCost = (typeof COMMONS_COSTS)[number];
 export type CommonsAccount = (typeof COMMONS_ACCOUNTS)[number];
@@ -36,6 +43,7 @@ export type CommonsReuseStatus = (typeof COMMONS_REUSE_STATUSES)[number];
 export type CommonsAutomationStatus = (typeof COMMONS_AUTOMATION_STATUSES)[number];
 export type CommonsAutomationAuth = (typeof COMMONS_AUTOMATION_AUTHS)[number];
 export type CommonsLinkType = (typeof COMMONS_LINK_TYPES)[number];
+export type CommonsHandoffMode = (typeof COMMONS_HANDOFF_MODES)[number];
 export type CommonsDetail = (typeof COMMONS_DETAIL_LEVELS)[number];
 
 export type CommonsFilters = {
@@ -93,6 +101,12 @@ export type CommonsLink = {
   type: CommonsLinkType;
 };
 
+export type CommonsAgentHandoff = {
+  mode: CommonsHandoffMode;
+  url: string;
+  instruction: string;
+};
+
 export type CommonsMethodology = {
   summary: string;
   classification: string;
@@ -125,6 +139,7 @@ export type CommonsResource = {
   reuse: CommonsReuse;
   automation: CommonsAutomation;
   links: CommonsLink[];
+  agent_handoff?: CommonsAgentHandoff;
   caveat: string;
   verified: string;
 };
@@ -141,7 +156,7 @@ export type CommonsKit = {
 };
 
 export type CommonsDocument = {
-  schema_version: typeof COMMONS_SCHEMA_VERSION;
+  schema_version: CommonsSchemaVersion;
   generated: string;
   verified: string;
   canonical_url: typeof COMMONS_SOURCE_URL;
@@ -201,6 +216,19 @@ const COMMONS_LINK_OUTPUT_SCHEMA = {
     label: { type: "string" },
     url: { type: "string" },
     type: { type: "string", enum: COMMONS_LINK_TYPES },
+  },
+} as const;
+
+const COMMONS_AGENT_HANDOFF_OUTPUT_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  description:
+    "Catalog-authored workflow proposal: required on schema 0.2 resources and absent on accepted 0.1 rollback resources. API and bulk modes bind to same-typed links. This is not provider contact, authorization, or permission.",
+  required: ["mode", "url", "instruction"],
+  properties: {
+    mode: { type: "string", enum: COMMONS_HANDOFF_MODES },
+    url: { type: "string", pattern: "^https://", minLength: 10, maxLength: 2_000 },
+    instruction: { type: "string", minLength: 20, maxLength: 400 },
   },
 } as const;
 
@@ -270,7 +298,7 @@ export const COMMONS_OUTPUT_SCHEMA = {
       properties: {
         url: { type: "string", const: COMMONS_SOURCE_URL },
         canonical_url: { type: "string", const: COMMONS_SOURCE_URL },
-        schema_version: { type: "string", const: COMMONS_SCHEMA_VERSION },
+        schema_version: { type: "string", enum: COMMONS_SCHEMA_VERSIONS },
         generated: { type: "string" },
         verified: { type: "string" },
       },
@@ -330,6 +358,7 @@ export const COMMONS_OUTPUT_SCHEMA = {
           reuse: COMMONS_REUSE_OUTPUT_SCHEMA,
           automation: COMMONS_AUTOMATION_OUTPUT_SCHEMA,
           links: { type: "array", items: COMMONS_LINK_OUTPUT_SCHEMA },
+          agent_handoff: COMMONS_AGENT_HANDOFF_OUTPUT_SCHEMA,
           caveat: { type: "string" },
           verified: { type: "string" },
           description: { type: "string" },
@@ -505,6 +534,38 @@ function validateLink(value: unknown, resourcePath: string, index: number): Comm
   };
 }
 
+function validateAgentHandoff(
+  value: unknown,
+  resourcePath: string,
+  links: CommonsLink[],
+  automation: CommonsAutomation,
+): CommonsAgentHandoff {
+  const path = `${resourcePath}.agent_handoff`;
+  assertExactRecord(value, ["mode", "url", "instruction"], path);
+  const handoff = {
+    mode: enumField(value.mode, COMMONS_HANDOFF_MODES, `${path}.mode`),
+    url: httpsUrl(value.url, `${path}.url`),
+    instruction: stringField(value.instruction, `${path}.instruction`, 400),
+  };
+  if ([...handoff.instruction].length < 20) {
+    throw new Error(`${path}.instruction must contain 20-400 characters`);
+  }
+  const handoffLink = links.find(({ url }) => url === handoff.url);
+  if (!handoffLink) {
+    throw new Error(`${path}.url must exactly match one published resource link`);
+  }
+  if (handoff.mode === "api" && handoffLink.type !== "api") {
+    throw new Error(`${path}.url must reference an api link when mode is api`);
+  }
+  if (handoff.mode === "bulk" && handoffLink.type !== "bulk") {
+    throw new Error(`${path}.url must reference a bulk link when mode is bulk`);
+  }
+  if (automation.status === "human-only" && handoff.mode !== "human") {
+    throw new Error(`${path}.mode must be human when automation.status is human-only`);
+  }
+  return handoff;
+}
+
 function validateMethodology(value: unknown): CommonsMethodology {
   const path = "commons document.methodology";
   assertExactRecord(value, ["summary", "classification", "maintenance", "boundary"], path);
@@ -535,11 +596,17 @@ function validateFoundation(value: unknown): CommonsFoundation {
   };
 }
 
-function validateResource(value: unknown, index: number): CommonsResource {
+function validateResource(
+  value: unknown,
+  index: number,
+  schemaVersion: CommonsSchemaVersion,
+): CommonsResource {
   const path = `resources[${index}]`;
   assertExactRecord(value, [
     "id", "name", "provider", "category_ids", "description", "good_for", "coverage", "keywords",
-    "audiences", "access", "reuse", "automation", "links", "caveat", "verified",
+    "audiences", "access", "reuse", "automation", "links",
+    ...(schemaVersion === COMMONS_SCHEMA_VERSION ? ["agent_handoff"] : []),
+    "caveat", "verified",
   ], path);
 
   const categoryIds = stringList(value.category_ids, `${path}.category_ids`, { max: COMMONS_CATEGORY_IDS.length, itemMax: 40 });
@@ -549,6 +616,11 @@ function validateResource(value: unknown, index: number): CommonsResource {
   if (!Array.isArray(value.links) || value.links.length < 1 || value.links.length > 12) {
     throw new Error(`${path}.links must contain 1-12 links`);
   }
+  const automation = validateAutomation(value.automation, `${path}.automation`);
+  const links = value.links.map((link, linkIndex) => validateLink(link, path, linkIndex));
+  const agentHandoff = schemaVersion === COMMONS_SCHEMA_VERSION
+    ? validateAgentHandoff(value.agent_handoff, path, links, automation)
+    : undefined;
 
   return {
     id: idField(value.id, `${path}.id`),
@@ -562,8 +634,9 @@ function validateResource(value: unknown, index: number): CommonsResource {
     audiences: stringList(value.audiences, `${path}.audiences`, { max: 16, itemMax: 120 }),
     access: validateAccess(value.access, `${path}.access`),
     reuse: validateReuse(value.reuse, `${path}.reuse`),
-    automation: validateAutomation(value.automation, `${path}.automation`),
-    links: value.links.map((link, linkIndex) => validateLink(link, path, linkIndex)),
+    automation,
+    links,
+    ...(agentHandoff ? { agent_handoff: agentHandoff } : {}),
     caveat: stringField(value.caveat, `${path}.caveat`, 2_000),
     verified: dateField(value.verified, `${path}.verified`),
   };
@@ -597,9 +670,10 @@ export function validateCommonsDocument(value: unknown): CommonsDocument {
     "schema_version", "generated", "verified", "canonical_url", "promise", "methodology", "privacy",
     "foundation", "categories", "kits", "resources",
   ], "commons document");
-  if (value.schema_version !== COMMONS_SCHEMA_VERSION) {
+  if (!COMMONS_SCHEMA_VERSIONS.includes(value.schema_version as CommonsSchemaVersion)) {
     throw new Error("commons document has an unsupported schema_version");
   }
+  const schemaVersion = value.schema_version as CommonsSchemaVersion;
   if (value.canonical_url !== COMMONS_SOURCE_URL) {
     throw new Error("commons document canonical_url is not the fixed source URL");
   }
@@ -615,7 +689,9 @@ export function validateCommonsDocument(value: unknown): CommonsDocument {
 
   const categories = value.categories.map(validateCategory);
   const kits = value.kits.map(validateKit);
-  const resources = value.resources.map(validateResource);
+  const resources = value.resources.map((resource, index) =>
+    validateResource(resource, index, schemaVersion)
+  );
   const foundation = validateFoundation(value.foundation);
   assertUniqueIds(categories, "categories");
   assertUniqueIds(kits, "kits");
@@ -636,7 +712,7 @@ export function validateCommonsDocument(value: unknown): CommonsDocument {
   }
 
   return {
-    schema_version: COMMONS_SCHEMA_VERSION,
+    schema_version: schemaVersion,
     generated: generatedField(value.generated, "commons document.generated"),
     verified: dateField(value.verified, "commons document.verified"),
     canonical_url: COMMONS_SOURCE_URL,
@@ -811,6 +887,7 @@ function briefResource(resource: CommonsResource) {
     reuse: resource.reuse,
     automation: resource.automation,
     links: resource.links,
+    ...(resource.agent_handoff ? { agent_handoff: resource.agent_handoff } : {}),
     caveat: resource.caveat,
     verified: resource.verified,
   };
@@ -909,7 +986,7 @@ export async function runCommons(raw: unknown, fetcher: Fetcher = globalThis.fet
       },
     } : {}),
     provider_boundary:
-      "No listed provider was contacted; only the fixed Kingdom catalog was fetched. Resource links are metadata and were not followed.",
+      "No listed provider was contacted; only the fixed Kingdom catalog was fetched. Resource links are metadata and were not followed. Any agent_handoff present is one catalog-authored proposed next door only, not authorization or permission; access, reuse, automation, and caveat fields still govern.",
     privacy_boundary:
       "need is used only in memory for literal matching: it is not put in the catalog request, persisted, or returned as a field. Canonical catalog text may naturally contain the same words. Hosting and network infrastructure remain separate; never send secrets.",
     no_guess:
@@ -986,6 +1063,7 @@ export function formatCommonsCompatibilityText(result: unknown): string {
     const access = isRecord(match.access) ? match.access : {};
     const reuse = isRecord(match.reuse) ? match.reuse : {};
     const automation = isRecord(match.automation) ? match.automation : {};
+    const handoff = isRecord(match.agent_handoff) ? match.agent_handoff : undefined;
     const links = Array.isArray(match.links) ? match.links.filter(isRecord) : [];
     const automationStatus = compactText(automation.status, 40);
     const linkOrder = automationStatus === "bulk-preferred"
@@ -995,10 +1073,18 @@ export function formatCommonsCompatibilityText(result: unknown): string {
         : ["api", "bulk", "start", "docs", "terms"];
     const primary: Record<string, unknown> =
       linkOrder.map((type) => links.find((link) => link.type === type)).find(Boolean) ?? links[0] ?? {};
+    const nextDoor = handoff
+      ? [
+        `  proposed handoff (${compactText(handoff.mode, 24) || "review"}; not authorization or permission): ${compactText(handoff.url, 320) || "see structured content"}`,
+        `  handoff note: ${compactText(handoff.instruction, 320) || "Read the surrounding catalog boundaries before acting."}`,
+      ]
+      : [
+        `  link${typeof primary.type === "string" ? ` (${compactText(primary.type, 24)})` : ""}: ${compactText(primary.url, 320) || "see structured content"}`,
+      ];
     appendBlock([
       `- ${compactText(match.id, 80) || "unknown"} · ${compactText(match.name, 140) || "Unnamed resource"} — ${compactText(match.provider, 140) || "unknown provider"}`,
       `  access ${compactText(access.cost, 40) || "unknown"}; account ${compactText(access.account, 40) || "unknown"} · reuse ${compactText(reuse.status, 40) || "unknown"} (${compactText(reuse.license, 100) || "check terms"}) · automation ${compactText(automation.status, 40) || "unknown"}; auth ${compactText(automation.auth, 40) || "unknown"} · checked ${compactText(match.verified, 32) || "unknown"}`,
-      `  link${typeof primary.type === "string" ? ` (${compactText(primary.type, 24)})` : ""}: ${compactText(primary.url, 320) || "see structured content"}`,
+      ...nextDoor,
       `  care: ${compactText(match.caveat, 240) || "Read the steward's current boundaries."}`,
     ]);
   }
