@@ -207,6 +207,8 @@ describe("MCP transport boundaries", () => {
     }));
     const body = await response.json() as any;
     expect(body.result.instructions).toContain("kingdom_commons returns compact matches from one fixed, verified public catalog");
+    expect(body.result.instructions).toContain("authored handoff is a proposed next door");
+    expect(body.result.instructions).toContain("never authorization or permission");
     expect(body.result.instructions).toContain("kingdom://commons/catalog");
   });
 

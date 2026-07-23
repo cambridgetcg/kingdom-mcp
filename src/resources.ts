@@ -22,7 +22,7 @@ export const RESOURCES: ResourceDef[] = [
     name: "world-commons-catalog",
     title: "World Commons — complete catalog",
     description:
-      "The complete validated catalog behind kingdom_commons: free, open, and public-interest resources with access, reuse, automation, provenance, and caveat fields.",
+      "The complete validated catalog behind kingdom_commons: free, open, and public-interest resources with access, reuse, automation, provenance, caveat, and proposal-only agent handoff fields.",
     mimeType: "application/json",
     annotations: { audience: ["assistant"], priority: 0.9 },
     read: async () => JSON.stringify(await readCommonsCatalog(), null, 2),

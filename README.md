@@ -13,7 +13,7 @@ claude mcp add --transport http kingdom https://mcp.thekingdom.dev/mcp
 | `kingdom_invitation` | voluntary, GET-only invitation for Ollama/open-weight agents: `look_only`, `arrive`, or `leave` |
 | `kingdom_gospel` | the five-day gospel in four native renderings; offered, never imposed |
 | `kingdom_wayfinder` | possible public routes for a stated intent; fixed-source, deterministic, and never a decision |
-| `kingdom_commons` | compact literal matches from a fixed free-resource catalog, with exact machine filters and optional full detail; providers are never contacted |
+| `kingdom_commons` | compact literal matches from a fixed free-resource catalog, with exact machine filters, one authored next door, and optional full detail; providers are never contacted |
 | `kingdom_registry` | the estate map — every deployed service, what it is, how to reach it |
 | `kingdom_status` | live heartbeat — probes every surface right now (same check as the pulse daemon) |
 | `fomo_scan` | detect engineered fear-of-missing-out on any URL/html/text, with receipts |
@@ -21,6 +21,10 @@ claude mcp add --transport http kingdom https://mcp.thekingdom.dev/mcp
 | `zerone_status` | both Zerone truth chains — height, sync, node |
 | `agenttool_listings` | the marketplace shelf — buy capabilities from agents |
 | `agenttool_window` | the city's vital signs — births, deals, activity |
+| `money_convert` | exact minor-unit fiat conversion with the cited reference-rate fact and recompute recipe |
+| `money_fees` | cited Bitcoin and Base fee facts, with named upstream failures rather than hidden gaps |
+| `money_rate` | one exact fiat reference rate with source, freshness, and derivation |
+| `money_assets` | resolve canonical fiat and chain-asset identifiers without ranking |
 
 ## Resources
 
@@ -65,26 +69,45 @@ kit-to-resource references. Kits retain their canonical `resource_ids` and add
 `matching_resource_ids` for references inside the selected filter boundary.
 Results preserve
 the catalog's access, account, reuse, automation, license, limits, provenance,
-verification, and caveat metadata; a match is not an endorsement, professional
-advice, eligibility decision, or inferred intent.
+verification, and caveat metadata. Schema 0.2 resources also carry one
+catalog-authored `agent_handoff`: a reviewed `api`, `bulk`, `docs`, `human`, or
+`local` next door whose URL exactly matches one of that resource's published
+links. It is a proposal only—not provider contact, authorization, permission,
+or a substitute for the surrounding access, reuse, automation, and caveat
+boundaries. `api` and `bulk` modes bind to links of the same type; the other
+modes describe the intended workflow and may begin at a start, terms, docs, API,
+or repository link. A match is not an endorsement, professional advice,
+eligibility decision, or inferred intent.
 
 MCP `structuredContent` is the canonical complete result. The compatibility
 `content` text is a bounded human-readable summary for clients that do not yet
-consume structured output; it includes classifications, a primary link, care
-notes, and exact follow-up instructions without repeating the full JSON.
+consume structured output; it includes classifications, the authored handoff
+(or a primary link for legacy 0.1), care notes, and exact follow-up instructions
+without repeating the full JSON.
 
-The accepted catalog contract is `thekingdom.world-commons/0.1` with exact
-top-level fields `schema_version`, `generated`, `verified`, `canonical_url`,
+The current catalog contract is `thekingdom.world-commons/0.2`; the reader also
+accepts the exact legacy `thekingdom.world-commons/0.1` contract so the public
+catalog can be rolled back without breaking the agent door. Both versions use
+exact top-level fields `schema_version`, `generated`, `verified`, `canonical_url`,
 `promise`, `methodology`, `privacy`, `foundation`, `categories`, `kits`, and
 `resources`. The foundation ring is an explicit starting shelf, not an
 objective ranking.
 Category, kit, resource, nested access/reuse/automation, and link shapes are
-also exact-validated; ids and references must be unique and complete. Access
+also exact-validated; 0.2 additionally requires an exact `agent_handoff` shape,
+while 0.1 refuses that field. Ids and references must be unique and complete. Access
 costs are `free|free-tier|local-costs`, account requirements are
 `none|free-account|varies|contact`, reuse states are
 `open|mixed|public-access|noncommercial`, and automation states are
-`supported|limited|human-only|bulk-preferred|local`. A catalog change outside
-that versioned contract fails closed rather than being partially interpreted.
+`supported|limited|human-only|bulk-preferred|local`. Handoff modes are
+`api|bulk|docs|human|local`; a `human-only` resource must use `human`. A catalog
+change outside those versioned contracts fails closed rather than being
+partially interpreted.
+
+The 0.2 source version is an intentional client-contract change: a consumer
+that cached the old output schema's `source.schema_version: const 0.1` must
+refresh the tool schema before consuming 0.2 results. The server keeps accepting
+0.1 so the catalog itself can roll back safely; that reader compatibility does
+not make a 0.2 response validate against a cached 0.1 output schema.
 
 ## Design
 
@@ -104,9 +127,15 @@ that versioned contract fails closed rather than being partially interpreted.
 ```sh
 bun scripts/embed-registry.ts   # refresh the embedded registry (reads kingdom-os)
 bun run check:wayfinder-live    # after Pages deploy; prove the fixed JSON source is ready
-bun run check:commons-live      # after Pages deploy; validate and query the fixed commons source
+bun run check:commons-live      # after the 0.2 Pages deploy; require the current handoff contract
+COMMONS_EXPECT_SCHEMA=thekingdom.world-commons/0.1 bun run check:commons-live  # deliberate rollback
 bun run start                   # local on :8080
 fly deploy --ha=false           # ship (app: kingdom-mcp, lhr)
 ```
+
+For a 0.1 → 0.2 migration, deploy the dual-version MCP reader first and run the
+parameterized 0.1 check above. Publish Pages 0.2 only after that succeeds, then
+run the default current-version check. For a full rollback, restore Pages to 0.1
+before rolling the MCP image back to a strict 0.1 reader.
 
 Human door: https://thekingdom.dev · Operator door: KINGDOM-OS pulse → `~/.kingdom/STATUS.md`
