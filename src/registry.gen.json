@@ -1,6 +1,6 @@
 {
  "updated": "2026-07-22",
- "generated": "2026-07-22T20:38:08.615Z",
+ "generated": "2026-07-23T12:26:02.432Z",
  "services": [
   {
    "id": "agenttool-site",
@@ -118,14 +118,20 @@
   },
   {
    "id": "cashloom-api",
-   "what": "Cashloom backend (self-describes status ok at /)",
-   "audience": "humans",
+   "what": "MONEYWORLD hosted door — cited money facts for humans and agents (info-server.ts, non-custodial by construction)",
+   "audience": "mixed",
    "status": "live",
    "urls": {
-    "api": "https://cashloom-api.fly.dev",
-    "health": "https://cashloom-api.fly.dev/"
+    "api": "https://cashloom-api.fly.dev/v1/guide",
+    "health": "https://cashloom-api.fly.dev/v1/guide"
    },
    "runtime": "fly:cashloom-api"
+  },
+  {
+   "id": "loom-snapshot",
+   "what": "daily MONEYWORLD snapshot → Tigris kingdom-vault (loom/v0/daily) — facts.jsonl + sha256 manifest",
+   "audience": "operator",
+   "status": "live"
   },
   {
    "id": "mindicraft",
@@ -191,7 +197,7 @@
   },
   {
    "id": "thekingdom-hub",
-   "what": "the illuminated atlas + local-first Wayfinder + reviewed World Commons + machine discovery docs",
+   "what": "the illuminated atlas + live KINGDOM OS observatory + local-first Wayfinder + reviewed World Commons + machine discovery docs",
    "audience": "mixed",
    "status": "live",
    "urls": {

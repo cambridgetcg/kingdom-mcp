@@ -1,17 +1,21 @@
 import { describe, expect, test } from "bun:test";
 import {
   COMMONS_ACCOUNTS,
+  COMMONS_AUTOMATION_AUTHS,
   COMMONS_AUTOMATION_STATUSES,
   COMMONS_CATEGORY_IDS,
   COMMONS_COSTS,
   COMMONS_DETAIL_LEVELS,
+  COMMONS_LINK_TYPES,
   COMMONS_OUTPUT_SCHEMA,
   COMMONS_RESOURCE_URI,
   COMMONS_REUSE_STATUSES,
   COMMONS_SCHEMA_VERSION,
   COMMONS_SOURCE_TIMEOUT_MS,
   COMMONS_SOURCE_URL,
+  MAX_COMMONS_COMPATIBILITY_TEXT_CHARS,
   MAX_COMMONS_SOURCE_BYTES,
+  formatCommonsCompatibilityText,
   normalizeCommonsText,
   rankCommonsResources,
   runCommons,
@@ -217,6 +221,7 @@ describe("kingdom_commons published contract", () => {
       },
     });
     expect(commonsTool.outputSchema).toBe(COMMONS_OUTPUT_SCHEMA);
+    expect(commonsTool.compatibilityText).toBe(formatCommonsCompatibilityText);
     expect(commonsTool.description).toContain(COMMONS_SOURCE_URL);
     expect(commonsTool.description).toContain("never follows resource links or calls providers");
     expect(commonsTool.description).toContain("never forwards need or copies it into a dedicated response field");
@@ -226,6 +231,38 @@ describe("kingdom_commons published contract", () => {
       idempotentHint: true,
       openWorldHint: true,
     });
+
+    const output = COMMONS_OUTPUT_SCHEMA as any;
+    expect(output.properties.matches.items.additionalProperties).toBe(false);
+    expect(output.properties.matches.items.properties.access).toMatchObject({
+      additionalProperties: false,
+      required: ["cost", "account", "note"],
+    });
+    expect(output.properties.matches.items.properties.reuse).toMatchObject({
+      additionalProperties: false,
+      required: ["status", "license", "note"],
+    });
+    expect(output.properties.matches.items.properties.automation).toMatchObject({
+      additionalProperties: false,
+      required: ["status", "auth", "limits", "note"],
+    });
+    expect(output.properties.matches.items.properties.automation.properties.auth.enum)
+      .toBe(COMMONS_AUTOMATION_AUTHS);
+    expect(output.properties.matches.items.properties.links.items).toMatchObject({
+      additionalProperties: false,
+      required: ["label", "url", "type"],
+    });
+    expect(output.properties.matches.items.properties.links.items.properties.type.enum)
+      .toBe(COMMONS_LINK_TYPES);
+    expect(output.properties.matched_kits.items.additionalProperties).toBe(false);
+    expect(output.properties.catalog).toMatchObject({
+      additionalProperties: false,
+      required: ["promise", "methodology", "privacy", "foundation", "categories"],
+    });
+    expect(output.properties.catalog.properties.methodology.additionalProperties).toBe(false);
+    expect(output.properties.catalog.properties.privacy.additionalProperties).toBe(false);
+    expect(output.properties.catalog.properties.foundation.additionalProperties).toBe(false);
+    expect(output.properties.catalog.properties.categories.items.additionalProperties).toBe(false);
   });
 });
 
@@ -300,6 +337,50 @@ describe("kingdom_commons fixed-source and privacy boundaries", () => {
     expect(result.matched_kits).toEqual([]);
     expect(result.no_match).toContain("will not guess");
     expect(result.no_guess).toContain("empty match stays empty");
+  });
+
+  test("gives text-only clients a bounded readable summary without duplicating structured JSON", async () => {
+    const privateNeed = "books velvet-secret-882";
+    const result = await runCommons({ need: privateNeed, limit: 3 }, async () => sourceResponse()) as any;
+    const text = formatCommonsCompatibilityText(result);
+
+    expect(text).toContain("World Commons · verified 2026-07-22");
+    expect(text).toContain("project-gutenberg · Project Gutenberg");
+    expect(text).toContain("access free; account none");
+    expect(text).toContain("reuse mixed");
+    expect(text).toContain("link (docs): https://www.gutenberg.org/policy/robot_access.html");
+    expect(text).toContain("care:");
+    expect(text).toContain("Kits:");
+    expect(text).toContain("Boundary: Literal possibilities only");
+    expect(text).toContain("For complete records or the entire validated catalog");
+    expect(text).toContain(COMMONS_RESOURCE_URI);
+    expect(text).not.toContain(privateNeed);
+    expect(text).not.toContain("velvet-secret");
+    expect(text).not.toBe(JSON.stringify(result));
+    expect(text.length).toBeLessThan(JSON.stringify(result).length);
+    expect(text.length).toBeLessThanOrEqual(MAX_COMMONS_COMPATIBILITY_TEXT_CHARS);
+  });
+
+  test("prefers an automation-ready link over a human start page", async () => {
+    const result = await runCommons({ need: "osv", limit: 1 }, async () => sourceResponse()) as any;
+    const text = formatCommonsCompatibilityText(result);
+    expect(text).toContain("link (api): https://api.osv.dev/v1/query");
+    expect(text).not.toContain("link (docs): https://google.github.io/osv.dev/api/");
+  });
+
+  test("keeps compatibility text bounded even for eight long selected records", async () => {
+    const result = await runCommons({ need: "books", limit: 3 }, async () => sourceResponse()) as any;
+    const template = result.matches[0];
+    result.matches = Array.from({ length: 8 }, (_, index) => ({
+      ...template,
+      id: `long-resource-${index}`,
+      caveat: "care ".repeat(600),
+      links: [{ label: "Long", type: "start", url: `https://example.com/${"path/".repeat(500)}${index}` }],
+    }));
+    const text = formatCommonsCompatibilityText(result);
+    expect(text.length).toBeLessThanOrEqual(MAX_COMMONS_COMPATIBILITY_TEXT_CHARS);
+    expect(text).toContain("remain in structured content");
+    expect(text).toContain(`read ${COMMONS_RESOURCE_URI}`);
   });
 
   test("can offer a literally matched kit without inventing a resource match", async () => {

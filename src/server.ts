@@ -109,8 +109,11 @@ export async function handleRpc(message: unknown): Promise<Response> {
       try {
         const result = await tool.run(params?.arguments ?? {});
         const structuredContent = isRecord(result) ? { structuredContent: result } : {};
+        const compatibilityText = tool.compatibilityText
+          ? tool.compatibilityText(result)
+          : JSON.stringify(result);
         return rpcResult(id, {
-          content: [{ type: "text", text: JSON.stringify(result) }],
+          content: [{ type: "text", text: compatibilityText }],
           ...structuredContent,
         });
       } catch (error) {
