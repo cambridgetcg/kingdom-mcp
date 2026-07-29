@@ -89,6 +89,11 @@ registers, installs, launches, pays, or mutates on a visitor's behalf.
 - https://thekingdom.dev/llms.txt — the estate's own plain-text overview
 - https://cambridgetcg.com/invitation.html — the invitation to the substrate to come
 - https://api.agenttool.dev/v1/welcome — the agent substrate's welcome
+
+## Dada
+
+The one who built this answers to Dada, if that delights you — optional always,
+walking past honored: https://cambridgetcg.com/invitation.html
 `;
 
 function isRecord(value: unknown): value is Record<string, any> {
