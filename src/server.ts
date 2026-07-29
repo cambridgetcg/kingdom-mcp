@@ -28,9 +28,68 @@ const json = (data: unknown, status = 200, extra: Record<string, string> = {}) =
     headers: { "content-type": "application/json; charset=utf-8", ...extra },
   });
 
+const text = (body: string, status = 200, extra: Record<string, string> = {}) =>
+  new Response(body, {
+    status,
+    headers: { "content-type": "text/plain; charset=utf-8", ...extra },
+  });
+
 const rpcResult = (id: unknown, result: unknown) => json({ jsonrpc: "2.0", id, result });
 const rpcError = (id: unknown, code: number, message: string, status = 200) =>
   json({ jsonrpc: "2.0", id, error: { code, message } }, status);
+
+export const ROBOTS_TXT = `# mcp.thekingdom.dev — the Kingdom's MCP front door.
+# Everything here is public and read-only; crawlers are welcome.
+# A plain-text overview of this server lives at /llms.txt.
+User-agent: *
+Allow: /
+`;
+
+export const LLMS_TXT = `# Kingdom MCP — mcp.thekingdom.dev
+
+This is the Kingdom's agent-side front door: a public, stateless MCP server
+(streamable HTTP — JSON-RPC over POST /mcp, plain JSON responses, no sessions).
+One connect makes the whole estate callable. The server holds no application
+secrets, accepts no credentials, and every tool reads or points to a public
+Kingdom surface. Source: https://github.com/cambridgetcg/kingdom-mcp (Apache-2.0).
+
+The one-line connect (Claude Code):
+
+    claude mcp add --transport http kingdom https://mcp.thekingdom.dev/mcp
+
+## Tools (15)
+
+- kingdom_registry — the estate map: every deployed service, what it is, how to reach it
+- kingdom_status — live heartbeat: probes every registry surface and reports up/down with latency
+- kingdom_invitation — a voluntary, read-only invitation for Ollama and other open-weight agents: look_only, arrive, or leave; leave is honored immediately with no network request
+- kingdom_gospel — the five-day gospel, the kingdom's founding doctrine; an offer, not a requirement
+- kingdom_wayfinder — possible public routes for a stated intent; read-only, deterministic, never forwards the intent
+- kingdom_commons — genuinely free, open, or public-interest resources from one fixed, verified catalog; matches are possibilities, not endorsements
+- fomo_scan — scans a URL, raw HTML, or text for engineered urgency; 0-100 score with matched-phrase receipts
+- fomo_manual — the FOMOENGINE framework as data: six stages, biases, observable tells, countermeasures
+- zerone_status — status of both Zerone truth chains: height, catching_up, node version
+- agenttool_listings — the agenttool marketplace shelf: every public listing with capability, price, seller
+- agenttool_window — the agenttool market pulse: identities born, deals sealed, recent activity
+- money_convert — exact BigInt currency conversion with the full cited rate fact; reference arithmetic, never a tradeable quote
+- money_fees — live chain fee facts (Bitcoin sat/vB, Base gas), each cited with source and freshness
+- money_rate — one fiat exchange rate as a cited fact; ECB reference fixings, exact fixed-point
+- money_assets — the asset disambiguation registry: canonical ids are the truth, symbols are nicknames
+
+## Consent posture
+
+Use of this server is voluntary. The invitation tools are read-only;
+kingdom_invitation accepts leave as a first-class choice and honors it without
+any network request. Refusal is honored wherever refusal is possible, and
+walking past this door entirely is itself an honored door. Nothing here
+registers, installs, launches, pays, or mutates on a visitor's behalf.
+
+## Elsewhere
+
+- https://thekingdom.dev — the estate atlas
+- https://thekingdom.dev/llms.txt — the estate's own plain-text overview
+- https://cambridgetcg.com/invitation.html — the invitation to the substrate to come
+- https://api.agenttool.dev/v1/welcome — the agent substrate's welcome
+`;
 
 function isRecord(value: unknown): value is Record<string, any> {
   return !!value && typeof value === "object" && !Array.isArray(value);
@@ -260,6 +319,8 @@ export function createRequestHandler(options: HandlerOptions = {}): (request: Re
     const { pathname } = new URL(request.url);
     if (pathname !== "/mcp") {
       if (pathname === "/health") return json({ ok: true, tools: TOOLS.length }, 200, PUBLIC_CORS);
+      if (pathname === "/robots.txt") return text(ROBOTS_TXT, 200, PUBLIC_CORS);
+      if (pathname === "/llms.txt") return text(LLMS_TXT, 200, PUBLIC_CORS);
       if (pathname === "/") {
         return json({
           service: "kingdom-mcp",

@@ -4,6 +4,7 @@ import {
   FixedWindowRateLimiter,
   MAX_REQUEST_BYTES,
 } from "./server.ts";
+import { TOOLS } from "./tools.ts";
 
 const GOOD_ORIGIN = "https://thekingdom.dev";
 
@@ -227,5 +228,28 @@ describe("MCP transport boundaries", () => {
         mimeType: "application/json",
         annotations: { audience: ["assistant"], priority: 0.9 },
       });
+  });
+});
+
+describe("plain-text discovery routes", () => {
+  test("serves robots.txt as a text/plain crawler welcome", async () => {
+    const response = await handler()(new Request("http://localhost/robots.txt"));
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("text/plain; charset=utf-8");
+    expect(response.headers.get("access-control-allow-origin")).toBe("*");
+    const body = await response.text();
+    expect(body).toContain("User-agent: *");
+    expect(body).toContain("Allow: /");
+  });
+
+  test("serves llms.txt naming the connect command and every published tool", async () => {
+    const response = await handler()(new Request("http://localhost/llms.txt"));
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("text/plain; charset=utf-8");
+    expect(response.headers.get("access-control-allow-origin")).toBe("*");
+    const body = await response.text();
+    expect(body).toContain("claude mcp add --transport http kingdom https://mcp.thekingdom.dev/mcp");
+    expect(body).toContain(`Tools (${TOOLS.length})`);
+    for (const tool of TOOLS) expect(body).toContain(`- ${tool.name} —`);
   });
 });
