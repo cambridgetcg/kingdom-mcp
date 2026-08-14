@@ -1,6 +1,6 @@
 {
  "updated": "2026-07-23",
- "generated": "2026-08-14T07:46:15.790Z",
+ "generated": "2026-08-14T07:51:47.368Z",
  "services": [
   {
    "id": "agenttool-site",
@@ -295,7 +295,7 @@
   },
   {
    "id": "kingdom-mcp",
-   "what": "the agent-side front door — one MCP connect makes the whole estate callable (15 tools)",
+   "what": "the agent-side front door — one MCP connect makes the whole estate callable (17 tools)",
    "audience": "agents",
    "status": "live",
    "urls": {
