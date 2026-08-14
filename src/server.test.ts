@@ -173,6 +173,8 @@ describe("MCP transport boundaries", () => {
     const listBody = await listed.json() as any;
     const wayfinder = listBody.result.tools.find(({ name }: { name: string }) => name === "kingdom_wayfinder");
     const commons = listBody.result.tools.find(({ name }: { name: string }) => name === "kingdom_commons");
+    const researchPlan = listBody.result.tools.find(({ name }: { name: string }) => name === "kingdom_research_plan");
+    const researchCheck = listBody.result.tools.find(({ name }: { name: string }) => name === "kingdom_research_check");
     expect(wayfinder.annotations).toEqual({
       readOnlyHint: true,
       destructiveHint: false,
@@ -182,6 +184,16 @@ describe("MCP transport boundaries", () => {
     expect(commons).toMatchObject({
       title: "Find free public resources",
       outputSchema: { type: "object" },
+    });
+    expect(researchPlan).toMatchObject({
+      title: "Plan bounded web research",
+      inputSchema: { additionalProperties: false },
+      outputSchema: { properties: { schema: { const: "kingdom.research-plan/1" } } },
+      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    });
+    expect(researchCheck).toMatchObject({
+      title: "Check a web-research ledger",
+      outputSchema: { properties: { schema: { const: "kingdom.research-check/1" } } },
     });
 
     const called = await fetch(rpcRequest({
@@ -211,6 +223,9 @@ describe("MCP transport boundaries", () => {
     expect(body.result.instructions).toContain("authored handoff is a proposed next door");
     expect(body.result.instructions).toContain("never authorization or permission");
     expect(body.result.instructions).toContain("kingdom://commons/catalog");
+    expect(body.result.instructions).toContain("kingdom_research_plan compiles a bounded provider-neutral web-research mission but does not activate agents or fetch");
+    expect(body.result.instructions).toContain("kingdom_research_check checks the resulting claim ledger without claiming factual proof");
+    expect(body.result.instructions).toContain("kingdom://research/protocol");
   });
 
   test("lists the complete commons catalog as assistant-oriented context", async () => {
@@ -227,6 +242,23 @@ describe("MCP transport boundaries", () => {
         title: "World Commons — complete catalog",
         mimeType: "application/json",
         annotations: { audience: ["assistant"], priority: 0.9 },
+      });
+  });
+
+  test("lists the web-research protocol as higher-priority assistant context", async () => {
+    const response = await handler()(rpcRequest({
+      jsonrpc: "2.0",
+      id: 11,
+      method: "resources/list",
+      params: {},
+    }));
+    const body = await response.json() as any;
+    expect(body.result.resources.find(({ uri }: { uri: string }) => uri === "kingdom://research/protocol"))
+      .toMatchObject({
+        name: "kingdom-web-research-protocol",
+        title: "KINGDOM web research protocol",
+        mimeType: "application/json",
+        annotations: { audience: ["assistant"], priority: 0.95 },
       });
   });
 });

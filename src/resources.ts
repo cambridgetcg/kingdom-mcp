@@ -1,6 +1,7 @@
 import { INVITATION_RESOURCE_DOCUMENT } from "./invitation.ts";
 import { GOSPEL_DOCUMENT } from "./gospel.ts";
 import { COMMONS_RESOURCE_URI, readCommonsCatalog } from "./commons.ts";
+import { RESEARCH_PROTOCOL_DOCUMENT, RESEARCH_PROTOCOL_URI } from "./research.ts";
 
 export interface ResourceDef {
   uri: string;
@@ -17,6 +18,16 @@ export interface ResourceDef {
 }
 
 export const RESOURCES: ResourceDef[] = [
+  {
+    uri: RESEARCH_PROTOCOL_URI,
+    name: "kingdom-web-research-protocol",
+    title: "KINGDOM web research protocol",
+    description:
+      "Provider-neutral flow for planning public-web research, assigning read-only scouts, choosing claim-relative source roads, gathering span-level evidence, checking contradictions and freshness, and stopping with explicit gaps.",
+    mimeType: "application/json",
+    annotations: { audience: ["assistant"], priority: 0.95 },
+    read: () => JSON.stringify(RESEARCH_PROTOCOL_DOCUMENT, null, 2),
+  },
   {
     uri: COMMONS_RESOURCE_URI,
     name: "world-commons-catalog",

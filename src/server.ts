@@ -160,6 +160,9 @@ export async function handleRpc(message: unknown): Promise<Response> {
           "kingdom_commons returns compact matches from one fixed, verified public catalog without contacting listed providers; " +
           "its authored handoff is a proposed next door, never authorization or permission; " +
           "use exact filters to set boundaries and read kingdom://commons/catalog only when complete context is useful; " +
+          "kingdom_research_plan compiles a bounded provider-neutral web-research mission but does not activate agents or fetch; " +
+          "the caller owns read-only scout orchestration, and kingdom_research_check checks the resulting claim ledger without claiming factual proof; " +
+          "read kingdom://research/protocol for source roads, safety boundaries, and stopping rules; " +
           "fomo_scan detects engineered urgency on any page; zerone_status reads the truth chains; " +
           "agenttool_listings + agenttool_window open the agent marketplace.",
       });

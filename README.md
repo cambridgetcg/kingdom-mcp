@@ -14,6 +14,8 @@ claude mcp add --transport http kingdom https://mcp.thekingdom.dev/mcp
 | `kingdom_gospel` | the five-day gospel in four native renderings; offered, never imposed |
 | `kingdom_wayfinder` | possible public routes for a stated intent; fixed-source, deterministic, and never a decision |
 | `kingdom_commons` | compact literal matches from a fixed free-resource catalog, with exact machine filters, one authored next door, and optional full detail; providers are never contacted |
+| `kingdom_research_plan` | compile a provider-neutral, finite web-research mission with claim facets and up to four proposed read-only scout assignments; no agent activation or fetch |
+| `kingdom_research_check` | deterministically check a claim/evidence/source ledger for citations, freshness, independence, contradictions, stopping, rights, privacy, and web-content safety |
 | `kingdom_registry` | the estate map — every deployed service, what it is, how to reach it |
 | `kingdom_status` | live heartbeat — probes every surface right now (same check as the pulse daemon) |
 | `fomo_scan` | detect engineered fear-of-missing-out on any URL/html/text, with receipts |
@@ -31,6 +33,7 @@ claude mcp add --transport http kingdom https://mcp.thekingdom.dev/mcp
 | resource | what |
 |---|---|
 | `kingdom://commons/catalog` | complete validated World Commons catalog for agents that genuinely need the full context |
+| `kingdom://research/protocol` | complete provider-neutral research flow, source roads, evidence contract, stopping rules, safety boundaries, and primary methodology sources |
 | `kingdom://gospel/five-days` | the five-day gospel as a static, optional resource |
 | `kingdom://invitation/ollama` | static invitation, consent choices, and public links for AgentTool, Ollama, Hermes, and OpenClaw |
 
@@ -108,6 +111,63 @@ that cached the old output schema's `source.schema_version: const 0.1` must
 refresh the tool schema before consuming 0.2 results. The server keeps accepting
 0.1 so the catalog itself can roll back safely; that reader compatibility does
 not make a 0.2 response validate against a cached 0.1 output schema.
+
+## Bounded web research
+
+KINGDOM web research has a provider-neutral control plane and a caller-owned
+data plane:
+
+```text
+already-active agent
+  → kingdom_research_plan
+  → host optionally activates ≤4 read-only scouts
+  → search → select → fetch → span-level claim ledger
+  → independent verifier
+  → kingdom_research_check
+  → scribe renders supported claim ids with citations and explicit gaps
+```
+
+`kingdom_research_plan` accepts a non-sensitive public question, atomic required
+facets, an as-of date, and optional risk/jurisdiction/language/budget fields. It
+returns a deterministic, full-SHA-256-addressed `kingdom.research-plan/1` mission
+with planner, scout, verifier, and scribe duties. Query, page, round, and time
+budgets are checked for internal minimums and divided explicitly among proposed
+scouts; this does not predict how long real research will take.
+It does not spawn an agent, search, fetch,
+open a submitted URL, choose a provider, persist the plan in application
+storage, or grant network authority. The calling MCP host receives the text and
+owns any later agent/search/browser use under its own policy.
+
+`kingdom_research_check` accepts the exact compiled plan together with its
+`kingdom.research-report/1` ledger. It recomputes the plan and refuses a changed
+plan id, risk tier, as-of value, required facet, budget, or assignment. Scout
+ids on queries and sources plus one start/finish receipt per assignment make
+the allocated query, page, round, and elapsed-time ceilings checkable.
+Each material claim must map to a locator and content-addressed short evidence
+span, a canonical source with an observation/version fingerprint, an explicit
+authority basis and independence group, a freshness state, and checked
+counterevidence. Claims use either one direct authority or two independent
+origins; syndicated copies count once. Sources separately record robots,
+terms, license/reuse, privacy, retrieval mode, and the invariant that web
+content stayed untrusted. Required facets may end `answered`, `gap`, or
+`conflict`; opposing evidence must remain conflicted rather than silently enter
+synthesis. Saturation requires two distinct no-progress query rounds for every
+open required facet. Current and high-stakes work must include the plan's
+freshness search; high-stakes reports include a declared domain and
+qualification basis for independent human review.
+
+The deterministic result is `pass`, `bounded_with_gaps`, or `fail` plus the
+canonical report SHA-256. `pass` means the declared ledger contract passed. It
+does not mean this server fetched the sources or independently proved factual
+truth, semantic entailment, reviewer independence or qualification, rights, or
+completeness. `high_stakes` reports require declared independent,
+domain-qualified human review.
+
+The complete site/source routing policy and research basis live at
+`kingdom://research/protocol`. The repository also carries the discoverable
+[`gather-web-evidence`](skills/gather-web-evidence/SKILL.md) skill for hosts
+that can activate bounded scouts. Search engines, vertical databases, browser
+renderers, and extractors remain replaceable caller-owned adapters.
 
 ## Design
 

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Gather Web Evidence"
+  short_description: "Plan and verify bounded web research"
+  default_prompt: "Use $gather-web-evidence to research this question with claim-level citations and explicit gaps."

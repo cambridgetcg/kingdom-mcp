@@ -19,6 +19,17 @@ import {
   runCommons,
 } from "./commons.ts";
 import { isPublicHttpUrl } from "./public-url.ts";
+import {
+  RESEARCH_CHECK_INPUT_SCHEMA,
+  RESEARCH_CHECK_OUTPUT_SCHEMA,
+  RESEARCH_PLAN_INPUT_SCHEMA,
+  RESEARCH_PLAN_OUTPUT_SCHEMA,
+  RESEARCH_PROTOCOL_URI,
+  formatResearchCheck,
+  formatResearchPlan,
+  runResearchCheck,
+  runResearchPlan,
+} from "./research.ts";
 
 const PROBE_TIMEOUT = 6_000;
 const UA = "kingdom-mcp/0.1 (+https://github.com/cambridgetcg/kingdom-mcp)";
@@ -182,6 +193,28 @@ export const TOOLS: ToolDef[] = [
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
     run: runCommons,
     compatibilityText: formatCommonsCompatibilityText,
+  },
+  {
+    name: "kingdom_research_plan",
+    title: "Plan bounded web research",
+    description:
+      `Compile a deterministic, provider-neutral public-web research mission for an already-active agent: atomic facets, claim-relative source roads, finite budgets, up to four read-only scout assignments, coverage stopping rules, and an independent verification role. Read ${RESEARCH_PROTOCOL_URI} for the complete flow and source-selection guide. This tool makes no network request, opens no URL, activates no agent, and grants no authority; the caller owns orchestration and search/browser tools. The server receives and returns the submitted planning text, so use only non-sensitive public context and never include credentials or secrets.`,
+    inputSchema: RESEARCH_PLAN_INPUT_SCHEMA,
+    outputSchema: RESEARCH_PLAN_OUTPUT_SCHEMA,
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    run: runResearchPlan,
+    compatibilityText: formatResearchPlan,
+  },
+  {
+    name: "kingdom_research_check",
+    title: "Check a web-research ledger",
+    description:
+      `Deterministically bind an exact kingdom.research-plan/1 output to its kingdom.research-report/1 ledger, then check evidence-span hashes, claim/evidence/source links, claim-relative authority or independent corroboration, freshness, planned query purposes, preserved contradictions, per-facet stopping, per-scout query/page/round/time receipts, robots/terms/reuse/privacy receipts, reviewer separation, and zero actions caused by web content. Returns pass, bounded_with_gaps, or fail plus a content digest. It performs no fetch and does not independently prove factual truth, entailment, reviewer independence or qualification, rights, completeness, or whether the allotted time was sufficient. The plan and report must contain only non-sensitive public research data and no credentials or secrets. See ${RESEARCH_PROTOCOL_URI}.`,
+    inputSchema: RESEARCH_CHECK_INPUT_SCHEMA,
+    outputSchema: RESEARCH_CHECK_OUTPUT_SCHEMA,
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    run: runResearchCheck,
+    compatibilityText: formatResearchCheck,
   },
   {
     name: "kingdom_registry",
