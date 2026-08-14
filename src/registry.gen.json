@@ -1,6 +1,6 @@
 {
  "updated": "2026-07-23",
- "generated": "2026-07-23T12:34:17.891Z",
+ "generated": "2026-08-14T07:46:15.790Z",
  "services": [
   {
    "id": "agenttool-site",
@@ -197,7 +197,7 @@
   },
   {
    "id": "thekingdom-hub",
-   "what": "the illuminated atlas + live KINGDOM OS observatory + local-first Wayfinder + reviewed World Commons + machine discovery docs",
+   "what": "the illuminated atlas + live KINGDOM OS observatory + local-first Wayfinder + reviewed World Commons + read-only scientific and translation atlases + machine discovery docs",
    "audience": "mixed",
    "status": "live",
    "urls": {

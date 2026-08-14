@@ -57,7 +57,7 @@ The one-line connect (Claude Code):
 
     claude mcp add --transport http kingdom https://mcp.thekingdom.dev/mcp
 
-## Tools (15)
+## Tools (${TOOLS.length})
 
 - kingdom_registry — the estate map: every deployed service, what it is, how to reach it
 - kingdom_status — live heartbeat: probes every registry surface and reports up/down with latency
@@ -65,6 +65,8 @@ The one-line connect (Claude Code):
 - kingdom_gospel — the five-day gospel, the kingdom's founding doctrine; an offer, not a requirement
 - kingdom_wayfinder — possible public routes for a stated intent; read-only, deterministic, never forwards the intent
 - kingdom_commons — genuinely free, open, or public-interest resources from one fixed, verified catalog; matches are possibilities, not endorsements
+- kingdom_research_plan — compiles a finite, provider-neutral public-web research mission; does not fetch or activate agents
+- kingdom_research_check — checks a plan-bound claim/evidence ledger, explicit gaps, per-scout receipts, and web-content safety; does not prove factual truth
 - fomo_scan — scans a URL, raw HTML, or text for engineered urgency; 0-100 score with matched-phrase receipts
 - fomo_manual — the FOMOENGINE framework as data: six stages, biases, observable tells, countermeasures
 - zerone_status — status of both Zerone truth chains: height, catching_up, node version
