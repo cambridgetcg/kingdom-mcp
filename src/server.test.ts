@@ -264,6 +264,13 @@ describe("MCP transport boundaries", () => {
 });
 
 describe("plain-text discovery routes", () => {
+  test("serves the liveness contract used by Fly", async () => {
+    const response = await handler()(new Request("http://localhost/health"));
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("application/json; charset=utf-8");
+    expect(await response.json()).toEqual({ ok: true, tools: TOOLS.length });
+  });
+
   test("serves robots.txt as a text/plain crawler welcome", async () => {
     const response = await handler()(new Request("http://localhost/robots.txt"));
     expect(response.status).toBe(200);
