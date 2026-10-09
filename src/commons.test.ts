@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import * as commons from "./commons.ts";
+import { fileURLToPath } from "node:url";
 import {
   COMMONS_ACCOUNTS,
   COMMONS_AUTOMATION_AUTHS,
@@ -190,6 +192,148 @@ function briefKit(kit: CommonsDocument["kits"][number], matchingResourceIds: str
   const { glyph: _glyph, keywords: _keywords, ...brief } = kit;
   return { ...brief, matching_resource_ids: matchingResourceIds };
 }
+
+async function offlineCommons(input: string | Uint8Array, args: string[] = []) {
+  const child = Bun.spawn([process.execPath, fileURLToPath(new URL("./commons-cli.ts", import.meta.url)), ...args], {
+    stdin: "pipe", stdout: "pipe", stderr: "pipe",
+  });
+  const output = Promise.all([new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited]);
+  child.stdin.write(input);
+  child.stdin.end();
+  const [stdout, stderr, status] = await output;
+  return { stdout, stderr, status };
+}
+
+describe("Commons snapshot composition", () => {
+  test("preserves exact MCP results across current and rollback snapshots", async () => {
+    const previousFetch = globalThis.fetch;
+    try {
+      for (const document of [catalog(), legacyCatalog()]) {
+        globalThis.fetch = (async () => sourceResponse(document)) as typeof fetch;
+        for (const query of [
+          { need: "security", account: "none", limit: 1 },
+          { need: "textbook", category: "learning", detail: "full" },
+          { need: "quasar upholstery", reuse: "open" },
+        ]) {
+          const response = await handleRpc({ jsonrpc: "2.0", id: "snapshot-parity", method: "tools/call", params: { name: "kingdom_commons", arguments: query } });
+          const { result } = await response.json() as any;
+          expect(result.isError).not.toBe(true);
+          const { provider_boundary: hostedBoundary, ...hosted } = result.structuredContent;
+          const { provider_boundary: localBoundary, ...local } = commons.queryCommonsSnapshot(query, document);
+          expect(JSON.parse(JSON.stringify(local))).toEqual(hosted);
+          expect(hostedBoundary).toContain("only the fixed Kingdom catalog was fetched");
+          expect(localBoundary).toContain("No network request was made");
+        }
+      }
+    } finally {
+      globalThis.fetch = previousFetch;
+    }
+  });
+
+  test("refuses invalid stdin envelopes without echoing their contents", async () => {
+    const sentinel = "PRIVATE_INPUT_SENTINEL";
+    const valid = { query: { need: sentinel }, catalog: catalog() };
+    const duplicate = catalog();
+    duplicate.resources.push(duplicate.resources[0]!);
+    const unsafe = catalog();
+    unsafe.resources[0]!.links[0]!.url = "https://127.0.0.1/";
+    for (const input of [
+      sentinel, "", "null", "[]", "{}",
+      JSON.stringify({ ...valid, extra: sentinel }),
+      JSON.stringify({ ...valid, query: { need: sentinel, api_key: sentinel } }),
+      JSON.stringify({ ...valid, query: { need: sentinel, limit: 9 } }),
+      JSON.stringify({ ...valid, query: { need: sentinel, account: "invented" } }),
+      JSON.stringify({ ...valid, catalog: duplicate }),
+      JSON.stringify({ ...valid, catalog: unsafe }),
+      JSON.stringify({ ...valid, catalog: { ...catalog(), schema_version: "future" } }),
+    ]) {
+      const result = await offlineCommons(input);
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe("");
+      expect(result.stderr).toStartWith("commons: ");
+      expect(result.stderr).not.toContain(sentinel);
+    }
+  });
+
+  test("refuses unsupported command arguments instead of selecting a transport", async () => {
+    for (const args of [["--url", "https://example.com/"], ["--text", "--text"], ["--help", "--text"]]) {
+      const result = await offlineCommons("not JSON", args);
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe("");
+      expect(result.stderr).toContain("only --text or --help");
+      expect(result.stderr).not.toContain("example.com");
+    }
+  });
+
+  test("can be imported without invoking its stdin entry point", async () => {
+    const before = process.exitCode;
+    await import("./commons-cli.ts");
+    expect(process.exitCode).toBe(before);
+  });
+
+  test("explains the standalone input without consuming it", async () => {
+    const result = await offlineCommons("deliberately not JSON", ["--help"]);
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe("");
+    for (const term of ["query", "catalog", "512 KiB", "--text", "JSON", "No network"]) expect(result.stdout).toContain(term);
+  });
+  test("offers a human text edition of the same local result", async () => {
+    const result = await offlineCommons(JSON.stringify({ query: { need: "security", limit: 1 }, catalog: catalog() }), ["--text"]);
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.stdout).toStartWith("A map in your pocket");
+    expect(result.stdout).toContain("supplied snapshot");
+    expect(result.stdout).toContain("not proof of origin");
+    expect(result.stdout).toContain("OSV.dev");
+    expect(result.stdout).toContain("not authorization or permission");
+    expect(result.stdout.length).toBeLessThan(MAX_COMMONS_COMPATIBILITY_TEXT_CHARS + 1_000);
+  });
+  test("rejects invalid UTF-8 rather than replacing a query character", async () => {
+    const text = JSON.stringify({ query: { need: "q" }, catalog: catalog() });
+    const input = new TextEncoder().encode(text);
+    input[text.indexOf('"q"') + 1] = 0xff;
+    const result = await offlineCommons(input);
+    expect(result.status).toBe(1);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toContain("valid UTF-8");
+  });
+  test("caps the entire stdin envelope at 512 KiB", async () => {
+    const input = JSON.stringify({ query: { need: "security" }, catalog: catalog() });
+    const atLimit = input + " ".repeat(MAX_COMMONS_SOURCE_BYTES - new TextEncoder().encode(input).byteLength);
+    expect((await offlineCommons(atLimit)).status).toBe(0);
+    const result = await offlineCommons(atLimit + " ");
+    expect(result.status).toBe(1);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toContain("512 KiB");
+  });
+  test("runs a saved-catalog query through the standalone stdin entry point", async () => {
+    const request = { query: { need: "security", account: "none", limit: 1 }, catalog: catalog() };
+    const result = await offlineCommons(JSON.stringify(request));
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(JSON.parse(result.stdout)).toEqual(commons.queryCommonsSnapshot(request.query, request.catalog));
+  });
+  test("matches a provided catalog without network or input mutation", () => {
+    expect(commons.queryCommonsSnapshot).toBeFunction();
+    const document = catalog();
+    const before = JSON.stringify(document);
+    const previousFetch = globalThis.fetch;
+    let requests = 0;
+    globalThis.fetch = (() => { requests += 1; throw new Error("network forbidden"); }) as typeof fetch;
+    try {
+      const result = commons.queryCommonsSnapshot({ need: "security", account: "none", limit: 1 }, document);
+      expect(result.matches).toEqual([briefResource(document.resources[0]!)]);
+      expect(result.matched_kits[0]?.id).toBe("guardrail-bundle");
+      expect(result.provider_boundary).toContain("supplied snapshot");
+      expect(result.provider_boundary).toContain("not proof of origin");
+      expect(result.provider_boundary).toContain("No network request");
+      expect(JSON.stringify(document)).toBe(before);
+      expect(requests).toBe(0);
+    } finally {
+      globalThis.fetch = previousFetch;
+    }
+  });
+});
 
 describe("kingdom_commons published contract", () => {
   test("publishes compact detail and exact machine filters with a stable output schema", () => {

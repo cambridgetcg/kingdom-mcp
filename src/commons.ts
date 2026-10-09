@@ -952,9 +952,10 @@ function parseArgs(raw: unknown): { need: string; filters: CommonsFilters; detai
   return { need, filters, detail, limit: limit as number };
 }
 
-export async function runCommons(raw: unknown, fetcher: Fetcher = globalThis.fetch): Promise<unknown> {
-  const { need, filters, detail, limit } = parseArgs(raw);
-  const document = await readCommonsCatalog(fetcher);
+function matchCommons(
+  { need, filters, detail, limit }: ReturnType<typeof parseArgs>,
+  document: CommonsDocument,
+) {
   const eligibleResources = filterCommonsResources(document.resources, filters);
   const rankedResources = rankCommonsResources(eligibleResources, need);
   const matches = rankedResources.slice(0, limit).map(({ resource }) =>
@@ -998,6 +999,22 @@ export async function runCommons(raw: unknown, fetcher: Fetcher = globalThis.fet
     ...(!matches.length && !matchedKits.length ? {
       no_match: "No literal catalog match appeared within the selected exact filters. The tool will not guess what the need means.",
     } : {}),
+  };
+}
+
+export async function runCommons(raw: unknown, fetcher: Fetcher = globalThis.fetch): Promise<unknown> {
+  const args = parseArgs(raw);
+  return matchCommons(args, await readCommonsCatalog(fetcher));
+}
+
+/** A map in your pocket: the same matches, from supplied data, with no I/O. */
+export function queryCommonsSnapshot(raw: unknown, catalog: unknown) {
+  const args = parseArgs(raw);
+  const document = validateCommonsDocument(catalog);
+  return {
+    ...matchCommons(args, document),
+    provider_boundary:
+      "No network request was made. This is a supplied snapshot: its canonical URL and verification dates are declarations, not proof of origin or freshness. No listed provider was contacted and no resource link was followed. Any agent_handoff is a proposed next door, not authorization or permission; access, reuse, automation, and caveat fields still govern.",
   };
 }
 

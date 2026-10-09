@@ -112,6 +112,34 @@ refresh the tool schema before consuming 0.2 results. The server keeps accepting
 0.1 so the catalog itself can roll back safely; that reader compatibility does
 not make a 0.2 response validate against a cached 0.1 output schema.
 
+## A map in your pocket — offline Commons
+
+Find a useful door without opening a connection. The Commons matcher can now
+stand alone, or remain connected to the existing `kingdom_commons` MCP tool.
+Both use the same validation, exact filters, ranking, records and human summary;
+only the acquisition boundary differs. There is no second catalog or engine.
+
+```sh
+bun run commons:offline --help
+bun run commons:offline < request.json          # machine JSON
+bun run commons:offline --text < request.json   # bounded human edition
+```
+
+`request.json` contains exactly `query` and `catalog`. `query` uses the same
+fields as `kingdom_commons`, for example `{"need":"maps","account":"none"}`;
+`catalog` is the complete saved `https://thekingdom.dev/commons.json` document,
+not a URL to fetch. The library entry is
+`queryCommonsSnapshot(query, catalog)` in `src/commons.ts`.
+
+The CLI reads only stdin (UTF-8 JSON, at most 512 KiB for the whole envelope),
+writes its result to stdout, and returns exit 1 with a short stderr diagnostic
+for rejected input. It does not fetch, crawl files, contact providers or store
+queries. The caller controls saving the input/output and obtaining the snapshot.
+Declared canonical URLs and verification dates do not authenticate a supplied
+snapshot or make it current; a valid shape is not a rights or accuracy audit.
+Empty matches stay empty. No package installation or MCP server is required;
+Bun is the runtime. Source access still follows this repository's visibility.
+
 ## Bounded web research
 
 KINGDOM web research has a provider-neutral control plane and a caller-owned
