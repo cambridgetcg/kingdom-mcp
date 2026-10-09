@@ -1,5 +1,6 @@
 import { INVITATION_RESOURCE_DOCUMENT } from "./invitation.ts";
 import { GOSPEL_DOCUMENT } from "./gospel.ts";
+import { MODULE_BRIDGE_URI, moduleBridgeDocument } from "./bridge.ts";
 import { COMMONS_RESOURCE_URI, readCommonsCatalog } from "./commons.ts";
 import { RESEARCH_PROTOCOL_DOCUMENT, RESEARCH_PROTOCOL_URI } from "./research.ts";
 
@@ -18,6 +19,15 @@ export interface ResourceDef {
 }
 
 export const RESOURCES: ResourceDef[] = [
+  {
+    uri: MODULE_BRIDGE_URI,
+    name: "wayfinder-commons-bridge",
+    title: "The agent is the bridge — Wayfinder and Commons",
+    description: "Meanings and live tool contracts for an agent-mediated connection; no tool, provider, or agent is invoked by reading this resource.",
+    mimeType: "application/json",
+    annotations: { audience: ["assistant"], priority: 0.9 },
+    read: () => JSON.stringify(moduleBridgeDocument(), null, 2),
+  },
   {
     uri: RESEARCH_PROTOCOL_URI,
     name: "kingdom-web-research-protocol",

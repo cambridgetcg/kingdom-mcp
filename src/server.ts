@@ -5,8 +5,9 @@
  * JSON responses (no SSE, no sessions). Every tool/resource reads or points
  * to a public Kingdom surface; this server holds no application secrets.
  */
-import { TOOLS, toolIndex } from "./tools.ts";
+import { TOOLS, toolIndex, describeTool } from "./tools.ts";
 import { RESOURCES, resourceIndex } from "./resources.ts";
+import { MODULE_BRIDGE_PROMPT, moduleBridgePrompt } from "./bridge.ts";
 
 const PORT = Number(process.env.PORT ?? 8080);
 export const PROTOCOL_VERSIONS = ["2025-06-18", "2025-03-26", "2024-11-05"] as const;
@@ -77,6 +78,15 @@ The one-line connect (Claude Code):
 - money_rate — one fiat exchange rate as a cited fact; ECB reference fixings, exact fixed-point
 - money_assets — the asset disambiguation registry: canonical ids are the truth, symbols are nicknames
 
+## Agent-mediated bridge
+
+The optional prompt bridge-wayfinder-commons and the JSON resource
+kingdom://bridge/wayfinder-commons describe two existing tools using their
+actual published schemas. The agent translates meaning, checks the declared
+route-to-catalog link, and preserves restrictions; reading either calls no
+tool or provider and grants no permission. Use prompts/list and prompts/get,
+or resources/list and resources/read. No user goal is needed by the prompt.
+
 ## Consent posture
 
 Use of this server is voluntary. The invitation tools are read-only;
@@ -114,14 +124,7 @@ function validInitializeParams(value: unknown): value is Record<string, any> {
 }
 
 function publishedTools(): Array<Record<string, unknown>> {
-  return TOOLS.map(({ name, title, description, inputSchema, outputSchema, annotations }) => ({
-    name,
-    ...(title ? { title } : {}),
-    description,
-    inputSchema,
-    ...(outputSchema ? { outputSchema } : {}),
-    ...(annotations ? { annotations } : {}),
-  }));
+  return TOOLS.map(describeTool);
 }
 
 export async function handleRpc(message: unknown): Promise<Response> {
@@ -153,7 +156,7 @@ export async function handleRpc(message: unknown): Promise<Response> {
       const version = PROTOCOL_VERSIONS.includes(requested) ? requested : PROTOCOL_VERSIONS[0];
       return rpcResult(id, {
         protocolVersion: version,
-        capabilities: { tools: { listChanged: false }, resources: { subscribe: false, listChanged: false } },
+        capabilities: { tools: { listChanged: false }, resources: { subscribe: false, listChanged: false }, prompts: { listChanged: false } },
         serverInfo: { name: "kingdom-mcp", version: "0.1.0" },
         instructions:
           "The kingdom's front door. Start with kingdom_registry (the estate map) or kingdom_status (live heartbeat). " +
@@ -161,6 +164,7 @@ export async function handleRpc(message: unknown): Promise<Response> {
           "kingdom_wayfinder offers possible public routes from an intent without deciding for the visitor; " +
           "kingdom_commons returns compact matches from one fixed, verified public catalog without contacting listed providers; " +
           "its authored handoff is a proposed next door, never authorization or permission; " +
+          "the optional bridge-wayfinder-commons prompt and kingdom://bridge/wayfinder-commons resource explain an agent-mediated connection without executing it; " +
           "use exact filters to set boundaries and read kingdom://commons/catalog only when complete context is useful; " +
           "kingdom_research_plan compiles a bounded provider-neutral web-research mission but does not activate agents or fetch; " +
           "the caller owns read-only scout orchestration, and kingdom_research_check checks the resulting claim ledger without claiming factual proof; " +
@@ -215,7 +219,15 @@ export async function handleRpc(message: unknown): Promise<Response> {
       }
     }
     case "prompts/list":
-      return rpcResult(id, { prompts: [] });
+      return rpcResult(id, { prompts: [MODULE_BRIDGE_PROMPT] });
+    case "prompts/get":
+      if (!isRecord(params) || params.name !== MODULE_BRIDGE_PROMPT.name ||
+          Object.keys(params).some((key) => !["name", "arguments", "_meta"].includes(key)) ||
+          (params.arguments !== undefined && (!isRecord(params.arguments) || Object.keys(params.arguments).length > 0)) ||
+          (params._meta !== undefined && !isRecord(params._meta))) {
+        return rpcError(id, -32602, "provide a known prompt name with no arguments or other fields");
+      }
+      return rpcResult(id, moduleBridgePrompt());
     default:
       return rpcError(id, -32601, `method not found: ${method}`);
   }
@@ -339,6 +351,7 @@ export function createRequestHandler(options: HandlerOptions = {}): (request: Re
           connect: { "claude code": "claude mcp add --transport http kingdom https://mcp.thekingdom.dev/mcp" },
           tools: TOOLS.map((tool) => tool.name),
           resources: RESOURCES.map((resource) => resource.uri),
+          prompts: [MODULE_BRIDGE_PROMPT.name],
           estate: "https://thekingdom.dev",
           registry: "https://github.com/cambridgetcg/KINGDOM-OS/blob/main/REGISTRY.yaml",
         }, 200, PUBLIC_CORS);

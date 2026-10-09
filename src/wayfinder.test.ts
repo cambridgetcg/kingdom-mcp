@@ -85,6 +85,35 @@ describe("kingdom_wayfinder shape", () => {
 });
 
 describe("kingdom_wayfinder behavior", () => {
+  test("accepts nine complete stops without breaking an unrelated route or truncating the selected one", async () => {
+    const expanded = structuredClone(paths);
+    expanded[2]!.stops = Array.from({ length: 9 }, (_, i) => ({
+      name: `Synthetic stop ${i}`, url: `https://example.com/${i}`,
+      why: "Synthetic growth fixture.", scope: "Proposed link only; not permission.",
+    }));
+    const unrelated = await runWayfinder({ intent: "play", limit: 1 }, async () => response(expanded)) as any;
+    expect(unrelated.matches.map((m: any) => m.id)).toEqual(["play"]);
+    const selected = await runWayfinder({ intent: "connect", limit: 1 }, async () => response(expanded)) as any;
+    expect(selected.matches[0].stops).toEqual(expanded[2]!.stops);
+    expect(selected.matches[0].stops).toHaveLength(9);
+  });
+
+  test("keeps the nine-stop reader budget finite and validates the added slot", async () => {
+    const expanded = structuredClone(paths);
+    expanded[2]!.stops = Array.from({ length: 9 }, (_, i) => ({
+      name: `Synthetic stop ${i}`, url: `https://example.com/${i}`,
+      why: "Synthetic growth fixture.", scope: "Proposed link only; not permission.",
+    }));
+    const ten = structuredClone(expanded);
+    ten[2]!.stops.push({ ...ten[2]!.stops[0]! });
+    await expect(runWayfinder({ intent: "play" }, async () => response(ten))).rejects.toThrow("stable contract");
+    for (const change of [{ url: "http://example.com/unsafe" }, { scope: "" }, { url: "https://test:fixture@example.com/" }]) {
+      const invalid = structuredClone(expanded);
+      Object.assign(invalid[2]!.stops[8]!, change);
+      await expect(runWayfinder({ intent: "play" }, async () => response(invalid))).rejects.toThrow("stable contract");
+    }
+  });
+
   test("fetches only the fixed public document and never forwards the intent", async () => {
     const calls: Array<{ url: string; init?: RequestInit }> = [];
     const result = await runWayfinder({ intent: "I need an accountant for tax" }, async (input, init) => {

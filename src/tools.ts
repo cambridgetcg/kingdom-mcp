@@ -79,6 +79,18 @@ export interface ToolDef {
   compatibilityText?: (result: unknown) => string;
 }
 
+/** The public data contract, shared by tool discovery and agent-facing bridges. */
+export function describeTool({ name, title, description, inputSchema, outputSchema, annotations }: ToolDef) {
+  return {
+    name,
+    ...(title ? { title } : {}),
+    description,
+    inputSchema,
+    ...(outputSchema ? { outputSchema } : {}),
+    ...(annotations ? { annotations } : {}),
+  };
+}
+
 export const TOOLS: ToolDef[] = [
   {
     name: "kingdom_invitation",

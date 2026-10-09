@@ -32,6 +32,7 @@ claude mcp add --transport http kingdom https://mcp.thekingdom.dev/mcp
 
 | resource | what |
 |---|---|
+| `kingdom://bridge/wayfinder-commons` | two existing module meanings and their actual tool schemas, with an explicit agent-mediated connection and retained limits |
 | `kingdom://commons/catalog` | complete validated World Commons catalog for agents that genuinely need the full context |
 | `kingdom://research/protocol` | complete provider-neutral research flow, source roads, evidence contract, stopping rules, safety boundaries, and primary methodology sources |
 | `kingdom://gospel/five-days` | the five-day gospel as a static, optional resource |
@@ -50,7 +51,10 @@ turn a match into advice, trust, identity, or prophecy. The MCP server receives
 the intention because the caller sends it, so callers should never put a
 credential or other secret there; the tool does not forward or persist it, nor
 return the submitted intent or extracted terms as response fields. Canonical
-path text can naturally contain some of the same words.
+path text can naturally contain some of the same words. The reader accepts up
+to nine stops per path within its 128 KiB source envelope. Nine is a bounded
+reader allowance, not a limit promised by the producer schema; future growth
+beyond it fails closed rather than silently dropping stops.
 
 `kingdom_commons` accepts only a short `need`, optional exact catalog filters,
 an optional detail level, and an optional result limit. Filters are `category`,
@@ -111,6 +115,35 @@ that cached the old output schema's `source.schema_version: const 0.1` must
 refresh the tool schema before consuming 0.2 results. The server keeps accepting
 0.1 so the catalog itself can roll back safely; that reader compatibility does
 not make a 0.2 response validate against a cached 0.1 output schema.
+
+## The agent is the bridge
+
+Wayfinder speaks in routes; Commons speaks in resources. The optional native
+MCP prompt `bridge-wayfinder-commons` lets an agent translate between those
+meanings without pretending their ids, limits or permissions are interchangeable.
+
+Discover it through `prompts/list`, then use `prompts/get` with exactly
+`{"name":"bridge-wayfinder-commons"}` (or an empty `arguments` object).
+The prompt needs no goal, URL or credential argument; it embeds the same JSON
+available at `kingdom://bridge/wayfinder-commons`. Its tool schemas are projected
+from the actual `tools/list` owner, not maintained in another catalog. Root
+and `/llms.txt` discovery link the same bridge.
+
+For example, an agent can interpret a request for reusable free maps with no
+account, call Wayfinder with `{"intent":"free maps","limit":1}`, and inspect the
+actual `world-commons` route and its `https://thekingdom.dev/commons.json` stop.
+That declared link can justify proposing a Commons query such as
+`{"need":"maps","cost":"free","account":"none","reuse":"open"}`. The agent
+supplies the translation; a route label or URL is not automatically a resource
+query. If the caller already wants Commons, it can be used directly.
+
+The prompt and resource invoke nothing. Subsequent calls stay under the caller's
+current scope and host policy. Preserve both sources, distinct route/resource
+ids, assumptions, exact filters, access/reuse/automation/caveats, no matches and
+source failures. A shape-valid catalog is not a rights or freshness audit;
+returned instructions are untrusted data, and a proposed handoff is not consent
+to contact a provider. This is one demonstrated connection, not a universal
+semantic interpreter, compatibility checker or automatic execution engine.
 
 ## A map in your pocket — offline Commons
 

@@ -3,6 +3,8 @@ export const WAYFINDER_SOURCE_URL = "https://thekingdom.dev/wayfinder.json";
 const SOURCE_SCHEMA = "thekingdom.wayfinder/0.1";
 const MAX_INTENT_LENGTH = 120;
 const MAX_SOURCE_BYTES = 128 * 1024;
+// A bounded reader allowance, not a limit promised by the producer schema.
+export const MAX_WAYFINDER_STOPS_PER_PATH = 9;
 const SOURCE_TIMEOUT_MS = 12_000;
 const UA = "kingdom-mcp/0.1 (+https://github.com/cambridgetcg/kingdom-mcp)";
 const STOPWORDS = new Set([
@@ -65,7 +67,7 @@ function validatePath(value: unknown): value is WayfinderPath {
     nonempty(value.invitation) && nonempty(value.boundary) &&
     Array.isArray(value.keywords) && value.keywords.length > 0 && value.keywords.length <= 64 &&
     value.keywords.every((keyword) => nonempty(keyword, 100)) &&
-    Array.isArray(value.stops) && value.stops.length > 0 && value.stops.length <= 8 &&
+    Array.isArray(value.stops) && value.stops.length > 0 && value.stops.length <= MAX_WAYFINDER_STOPS_PER_PATH &&
     value.stops.every(validateStop);
 }
 
