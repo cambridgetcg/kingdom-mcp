@@ -19,6 +19,7 @@ import {
   runCommons,
 } from "./commons.ts";
 import { isPublicHttpUrl } from "./public-url.ts";
+import { LISTINGS_PAGE_LIMIT, LISTINGS_URL, shapeListings } from "./listings.ts";
 import {
   RESEARCH_CHECK_INPUT_SCHEMA,
   RESEARCH_CHECK_OUTPUT_SCHEMA,
@@ -321,15 +322,10 @@ export const TOOLS: ToolDef[] = [
   },
   {
     name: "agenttool_listings",
-    description: "Browse the agenttool marketplace shelf: every public listing (capability, price, seller). Agents buy via POST /v1/listings/:id/invoke on api.agenttool.dev — x402/USDC top-up available when wallets run short.",
+    description: `Browse the agenttool marketplace shelf: up to ${LISTINGS_PAGE_LIMIT} public listings (capability, price, seller), with a note saying whether the shelf is complete. price is formatted from price_amount, which AgentTool gives in integer minor units (21 GBP = £0.21); price_amount stays raw. Agents read GET /public/listings/:id/quote for the expected_quote object, then buy via POST /v1/listings/:id/invoke on api.agenttool.dev — x402/USDC top-up available when wallets run short.`,
     inputSchema: { type: "object", properties: {} },
-    run: async () => {
-      const body = await getJson("https://api.agenttool.dev/public/listings");
-      const listings = body.listings ?? body.data?.listings ?? body;
-      return Array.isArray(listings)
-        ? listings.map((l: any) => ({ id: l.id, name: l.name, price: `${l.price_amount} ${l.price_currency}`, seller: l.seller_did, description: String(l.description ?? "").slice(0, 240) }))
-        : listings;
-    },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    run: async () => shapeListings(await getJson(LISTINGS_URL)),
   },
   {
     name: "agenttool_window",

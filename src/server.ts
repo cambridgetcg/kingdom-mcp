@@ -71,7 +71,7 @@ The one-line connect (Claude Code):
 - fomo_scan — scans a URL, raw HTML, or text for engineered urgency; 0-100 score with matched-phrase receipts
 - fomo_manual — the FOMOENGINE framework as data: six stages, biases, observable tells, countermeasures
 - zerone_status — status of both Zerone truth chains: height, catching_up, node version
-- agenttool_listings — the agenttool marketplace shelf: every public listing with capability, price, seller
+- agenttool_listings — the agenttool marketplace shelf: up to 200 public listings with capability, price (minor units, formatted), seller, and whether the shelf is complete
 - agenttool_window — the agenttool market pulse: identities born, deals sealed, recent activity
 - money_convert — exact BigInt currency conversion with the full cited rate fact; reference arithmetic, never a tradeable quote
 - money_fees — live chain fee facts (Bitcoin sat/vB, Base gas), each cited with source and freshness
