@@ -322,7 +322,7 @@ export const TOOLS: ToolDef[] = [
   },
   {
     name: "agenttool_listings",
-    description: `Browse the agenttool marketplace shelf: up to ${LISTINGS_PAGE_LIMIT} public listings (capability, price, seller), with a note saying whether the shelf is complete. price is formatted from price_amount, which AgentTool gives in integer minor units (21 GBP = £0.21); price_amount stays raw for expected_quote. Agents buy via POST /v1/listings/:id/invoke on api.agenttool.dev — x402/USDC top-up available when wallets run short.`,
+    description: `Browse the agenttool marketplace shelf: up to ${LISTINGS_PAGE_LIMIT} public listings (capability, price, seller), with a note saying whether the shelf is complete. price is formatted from price_amount, which AgentTool gives in integer minor units (21 GBP = £0.21); price_amount stays raw. Agents read GET /public/listings/:id/quote for the expected_quote object, then buy via POST /v1/listings/:id/invoke on api.agenttool.dev — x402/USDC top-up available when wallets run short.`,
     inputSchema: { type: "object", properties: {} },
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
     run: async () => shapeListings(await getJson(LISTINGS_URL)),

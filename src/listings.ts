@@ -34,7 +34,7 @@ export function shapeListings(body: any, pageLimit = LISTINGS_PAGE_LIMIT): unkno
     shown,
     complete,
     note: complete
-      ? `All ${shown} public listings. price is formatted from price_amount, which is integer minor units of price_currency (21 GBP = £0.21); send price_amount unchanged as expected_quote.`
+      ? `All ${shown} public listings. price is formatted from price_amount, which is integer minor units of price_currency (21 GBP = £0.21). To invoke, read GET https://api.agenttool.dev/public/listings/<id>/quote: its expected_quote object (listing_updated_at, price_amount, price_currency) is what invoke checks.`
       : `First ${shown} public listings. AgentTool caps a page at ${pageLimit} and offers no cursor, so more may exist; narrow with GET https://api.agenttool.dev/public/listings?q=<text> or ?tag=<tag>. price is formatted from price_amount (integer minor units).`,
     listings: listings.map((l: any) => ({
       id: l.id,
