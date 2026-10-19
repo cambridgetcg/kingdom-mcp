@@ -20,6 +20,7 @@ import {
 } from "./commons.ts";
 import { isPublicHttpUrl } from "./public-url.ts";
 import { LISTINGS_PAGE_LIMIT, LISTINGS_URL, shapeListings } from "./listings.ts";
+import { probeStatus, statusSummary, type ProbeContract } from "./status-probe.ts";
 import {
   RESEARCH_CHECK_INPUT_SCHEMA,
   RESEARCH_CHECK_OUTPUT_SCHEMA,
@@ -32,10 +33,9 @@ import {
   runResearchPlan,
 } from "./research.ts";
 
-const PROBE_TIMEOUT = 6_000;
 const UA = "kingdom-mcp/0.1 (+https://github.com/cambridgetcg/kingdom-mcp)";
 
-export interface RegistryService {
+export interface RegistryService extends ProbeContract {
   id: string;
   what?: string;
   audience?: string;
@@ -244,25 +244,13 @@ export const TOOLS: ToolDef[] = [
   },
   {
     name: "kingdom_status",
-    description: "Live heartbeat: probes every registry surface right now and reports up/down with latency. The same check the kingdom's own pulse daemon runs.",
+    description: "Live heartbeat for public registry surfaces: reports up/down with latency, or neutral resting when a declared rest_file exists on this probe host (no HTTP request). Optional expect_type, expect_json and block_max_age_sec assertions check content and CometBFT block freshness; rows without them retain status-code-only checks. Local/private surfaces are excluded.",
     inputSchema: { type: "object", properties: {} },
     run: async () => {
       const services = await registry();
       const probeable = probeableServices(services);
-      const results = await Promise.all(probeable.map(async (s) => {
-        const url = s.urls!.health ?? s.urls!.api ?? s.urls!.site!;
-        const expected = Array.isArray(s.expect) ? s.expect : s.expect ? [s.expect] : [];
-        const t0 = Date.now();
-        try {
-          const res = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(PROBE_TIMEOUT), headers: { "user-agent": UA } });
-          const up = res.status < 400 || expected.includes(res.status);
-          return { id: s.id, expected: s.status, observed: up ? "up" : "down", code: res.status, ms: Date.now() - t0 };
-        } catch (e) {
-          return { id: s.id, expected: s.status, observed: "down", ms: Date.now() - t0, error: String((e as Error).message).slice(0, 60) };
-        }
-      }));
-      const down = results.filter((r) => r.observed === "down" && r.expected === "live");
-      return { summary: `${results.filter((r) => r.observed === "up").length}/${results.length} up${down.length ? ` — ⚠ ${down.map((d) => d.id).join(", ")} DOWN` : " — all quiet"}`, results };
+      const results = await Promise.all(probeable.map((s) => probeStatus(s)));
+      return { summary: statusSummary(results), results };
     },
   },
   {
