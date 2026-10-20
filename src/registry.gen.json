@@ -88,7 +88,7 @@
     "health": "https://api.fomoengine.io/"
    },
    "runtime": "fly:fomoengine",
-   "money": "x402 LIVE 2026-07-19: /scan = $0.01 USDC on Solana mainnet (PayAI facilitator, treasury keychain `fomoengine-solana-treasury`, payTo CeQqNBX5…). Plus fomo-scan listing 402e833c via seller-loop."
+   "money": "x402 LIVE 2026-07-19: /scan = $0.01 USDC on Solana mainnet; PayAI facilitator; payTo CeQqNBX5…; Plus fomo-scan listing 402e833c via seller-loop."
   },
   {
    "id": "authenticity-shield",

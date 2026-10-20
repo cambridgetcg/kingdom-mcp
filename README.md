@@ -246,7 +246,7 @@ renderers, and extractors remain replaceable caller-owned adapters.
 ## Run / deploy
 
 ```sh
-bun scripts/embed-registry.ts   # refresh the embedded registry (reads kingdom-os)
+KINGDOM_REGISTRY=/path/to/REGISTRY.yaml bun scripts/embed-registry.ts   # refresh the embedded registry from a reviewed copy
 bun run check:wayfinder-live    # after Pages deploy; prove the fixed JSON source is ready
 bun run check:commons-live      # after the 0.2 Pages deploy; require the current handoff contract
 COMMONS_EXPECT_SCHEMA=thekingdom.world-commons/0.1 bun run check:commons-live  # deliberate rollback
