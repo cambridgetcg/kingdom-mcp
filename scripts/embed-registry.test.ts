@@ -67,6 +67,11 @@ describe("public money curation", () => {
       .toBe("5% marketplace take");
     expect(publicService({ money: `${price} (payTo TEST_ONLY_OPERATOR_NOTE)` }).money).toBe(price);
   });
+
+  test("the committed snapshot the image serves is already curated", async () => {
+    const snapshot = await Bun.file(new URL("../src/registry.gen.json", import.meta.url).pathname).json();
+    for (const service of snapshot.services) expect(service.money).toBe(publicService(service).money);
+  });
 });
 
 describe("explicit registry input", () => {
